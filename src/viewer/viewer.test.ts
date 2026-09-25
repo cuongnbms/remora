@@ -363,7 +363,7 @@ describe('Viewer', () => {
     await render(createElement(Viewer));
 
     const banner = container.querySelector('.banner.error')!;
-    expect(banner.textContent).toContain('devbox disconnected — retrying…');
+    expect(banner.textContent).toContain('Can’t reach devbox — retrying…');
     expect(banner.textContent).toContain('ssh timed out');
 
     await click(banner.querySelector('button')!);
@@ -438,7 +438,7 @@ describe('FileView', () => {
   test('shows binary files and load errors inline', async () => {
     readFile.mockRejectedValue(Object.assign(new Error('cannot decode'), { kind: 'Binary' }));
     await render(createElement(FileView, { project, path: 'blob.bin' }));
-    await waitFor(() => expect(container.querySelector('.pad.error')?.textContent).toBe('Binary file — not shown'));
+    await waitFor(() => expect(container.querySelector('.error-state')?.textContent).toBe('Binary file — not shown'));
 
     act(() => root.unmount());
     container.remove();
@@ -448,7 +448,8 @@ describe('FileView', () => {
 
     readFile.mockRejectedValue(notFound());
     await render(createElement(FileView, { project, path: 'missing.md' }));
-    await waitFor(() => expect(container.querySelector('.pad.error')?.textContent).toBe('Path not found.'));
+    await waitFor(() => expect(container.querySelector('.error-state .error-title')?.textContent).toBe('File not found'));
+    expect(container.querySelector('.error-state .error-detail')?.textContent).toBe('Path not found.');
   });
 
   test('shows an image file through readImage and reloads it on change', async () => {
@@ -468,7 +469,27 @@ describe('FileView', () => {
   test('shows an image read error inline', async () => {
     readImage.mockRejectedValue(Object.assign(new Error('image larger than 5242880 bytes'), { kind: 'TooLarge' }));
     await render(createElement(FileView, { project, path: 'big.jpg' }));
-    await waitFor(() => expect(container.querySelector('.pad.error')?.textContent).toBe('image larger than 5242880 bytes'));
+    await waitFor(() => expect(container.querySelector('.error-state .error-title')?.textContent).toBe('File is too large to show'));
+    expect(container.querySelector('.error-state .error-detail')?.textContent).toBe('image larger than 5242880 bytes');
+  });
+
+  test('a connection error offers a retry that reloads the file', async () => {
+    readFile.mockRejectedValue(Object.assign(new Error('Operation timed out'), { kind: 'Ssh' }));
+    await render(createElement(FileView, { project, path: 'a.ts' }));
+    await waitFor(() => expect(container.querySelector('.error-state .error-title')?.textContent).toBe('Can’t reach devbox'));
+    expect(container.querySelector('.error-state .error-detail')?.textContent).toBe('Operation timed out');
+
+    readFile.mockResolvedValue({ content: 'back\n', truncated: false });
+    await click(container.querySelector('.error-state button')!);
+    await waitFor(() => expect(container.textContent).toContain('back'));
+  });
+
+  test('while the host is down a connection error defers to the banner', async () => {
+    useStore.setState({ hosts: { devbox: { host: 'devbox', state: 'error', message: 'Host is down' } } });
+    readFile.mockRejectedValue(Object.assign(new Error('Operation timed out'), { kind: 'Ssh' }));
+    await render(createElement(FileView, { project, path: 'a.ts' }));
+    await waitFor(() => expect(container.querySelector('.error-state')?.textContent).toBe('Waiting for devbox to reconnect…'));
+    expect(container.textContent).not.toContain('Operation timed out');
   });
 
   test('banners a truncated file', async () => {

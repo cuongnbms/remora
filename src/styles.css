@@ -104,6 +104,21 @@ ul { list-style: none; margin: 0; padding: 0; }
 .breadcrumb + .banner { margin-top: 6px; }
 .banner.error { background: color-mix(in srgb, var(--error) 15%, transparent); }
 .banner.warn { background: color-mix(in srgb, var(--warn) 15%, transparent); }
+/* Host connection banner: one line; the raw ssh message truncates (full text on hover). */
+.host-banner { margin: 6px 8px 0; color: var(--error); }
+.host-banner .icon { flex: none; }
+.host-banner strong { flex: none; white-space: nowrap; }
+.host-banner .banner-detail { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; color: var(--muted); }
+.host-banner button { flex: none; margin-left: auto; }
+/* Centered state for a panel whose content failed to load. */
+.error-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px 16px; text-align: center; }
+.error-state .icon { color: var(--error); }
+.error-state p { margin: 0; }
+.error-state .error-title { font-weight: 600; }
+.error-state .error-detail { max-width: 48ch; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; user-select: text; }
+.error-state button { margin-top: 6px; }
+.error-state.quiet .error-title { font-weight: 400; color: var(--muted); }
+.tree .error-state { padding: 16px 8px; }
 
 .md-layout { flex: 1; display: flex; min-height: 0; }
 .toc { flex: none; overflow-y: auto; border-right: 1px solid var(--border); padding: 0 6px 4px; }

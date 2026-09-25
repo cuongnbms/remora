@@ -1,10 +1,12 @@
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
+import { ErrorState, useHostDown } from '../components/ErrorState';
 import { api, errorKind, errorMessage } from '../lib/api';
 import { copyText } from '../lib/clipboard';
 import { findProject } from '../lib/configOps';
 import { dropDirAt } from '../lib/dropTarget';
+import { isConnectionError } from '../lib/errors';
 import { absPath } from '../lib/project';
 import { startDownload, startUpload } from '../lib/transfer';
 import { dirsToRefresh } from '../lib/tree';
@@ -21,6 +23,9 @@ export function FileTree({ projectId }: { projectId: string }) {
   const [showHidden, setShowHidden] = useState(false);
   const activePath = useStore((s) => s.views[projectId]?.active ?? null);
   const batch = useStore((s) => s.lastBatch);
+  const reloadSeq = useStore((s) => s.reloadSeq);
+  const host = useStore((s) => findProject(s.config, projectId)?.host);
+  const hostDown = useHostDown(host);
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   // Bumped per directory on every load and on every invalidation, so a response that lands after a
@@ -95,6 +100,15 @@ export function FileTree({ projectId }: { projectId: string }) {
   }, [load]);
 
   useEffect(() => {
+    if (!reloadSeq) return;
+    const open = expandedRef.current;
+    // Collapsed folders drop their cache (possibly a stale error) and reload on the next expand.
+    setChildren((c) => Object.fromEntries(Object.entries(c).filter(([dir]) => open.has(dir))));
+    for (const dir of open) void load(dir);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadSeq]);
+
+  useEffect(() => {
     if (!batch || batch.projectId !== projectId) return;
     const dropped: string[] = [];
     for (const dir of dirsToRefresh(batch.changes)) {
@@ -133,15 +147,34 @@ export function FileTree({ projectId }: { projectId: string }) {
     const indent = { paddingLeft: 8 + depth * 12 };
     if (!state) return <div className="tree-row muted" style={indent}>Loading…</div>;
     if ('error' in state) {
-      if (dir === '' && state.kind === 'NotFound') {
-        return (
-          <div className="pad error">
-            Path not found.{' '}
-            <button onClick={() => useStore.getState().requestEditProject(projectId)}>Edit project</button>
-          </div>
+      // The viewer's connection banner already carries the ssh detail and a retry.
+      if (hostDown && isConnectionError(state.kind)) {
+        return dir === '' ? (
+          <ErrorState quiet title={`Waiting for ${host} to reconnect…`} />
+        ) : (
+          <div className="tree-row muted" style={indent}>Waiting for reconnect…</div>
         );
       }
-      return <div className="tree-row error" style={indent}>{state.error}</div>;
+      if (dir === '') {
+        return state.kind === 'NotFound' ? (
+          <ErrorState
+            title="Project folder not found"
+            detail={state.error}
+            action={<button onClick={() => useStore.getState().requestEditProject(projectId)}>Edit project</button>}
+          />
+        ) : (
+          <ErrorState
+            title={isConnectionError(state.kind) ? `Can’t reach ${host}` : 'Can’t list files'}
+            detail={state.error}
+            action={<button onClick={() => void load('')}>Retry</button>}
+          />
+        );
+      }
+      return (
+        <div className="tree-row error" style={indent} title={state.error} onClick={() => void load(dir)}>
+          Couldn’t load — click to retry
+        </div>
+      );
     }
     return state
       .filter((e) => !e.name.startsWith('.remora-') && (showHidden || !HIDDEN.has(e.name)))

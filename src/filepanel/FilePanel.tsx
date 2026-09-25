@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, errorMessage } from '../lib/api';
+import { api, errorKind, errorMessage } from '../lib/api';
+import { isConnectionError } from '../lib/errors';
 import { findProject } from '../lib/configOps';
 import { fuzzyFilter } from '../lib/fuzzy';
 import { basename, dirname } from '../lib/paths';
@@ -23,6 +24,7 @@ export function FilePanel() {
 function ProjectFiles({ project }: { project: Project }) {
   const files = useStore((s) => s.views[project.id]?.files ?? null);
   const filesGeneration = useStore((s) => s.views[project.id]?.filesGeneration ?? 0);
+  const reloadSeq = useStore((s) => s.reloadSeq);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -36,12 +38,13 @@ function ProjectFiles({ project }: { project: Project }) {
         if (!cancelled) useStore.getState().setFiles(project.id, list, filesGeneration);
       })
       .catch((e) => {
-        if (!cancelled) useStore.getState().setToast(`Cannot list files: ${errorMessage(e)}`);
+        // An unreachable host is already reported by the connection banner; a reconnect retries.
+        if (!cancelled && !isConnectionError(errorKind(e))) useStore.getState().setToast(`Cannot list files: ${errorMessage(e)}`);
       });
     return () => {
       cancelled = true;
     };
-  }, [project.id, files, filesGeneration]);
+  }, [project.id, files, filesGeneration, reloadSeq]);
 
   const results = useMemo(() => (query && files ? fuzzyFilter(query, files, 50) : []), [query, files]);
   const open = (p: string) => {

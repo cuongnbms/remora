@@ -299,6 +299,18 @@ describe('misc state', () => {
     expect(useStore.getState().editRequest).toBe('p1');
   });
 
+  test('setHost bumps reloadSeq only when a host recovers from an error', () => {
+    const s = useStore.getState();
+    s.setHost({ host: 'h', state: 'connected', message: null });
+    expect(useStore.getState().reloadSeq).toBe(0);
+    s.setHost({ host: 'h', state: 'error', message: 'down' });
+    expect(useStore.getState().reloadSeq).toBe(0);
+    s.setHost({ host: 'h', state: 'connected', message: null });
+    expect(useStore.getState().reloadSeq).toBe(1);
+    s.setHost({ host: 'h', state: 'connected', message: null });
+    expect(useStore.getState().reloadSeq).toBe(1);
+  });
+
   test('updateConfig saves the new config', async () => {
     useStore.getState().init(config, null);
     await useStore.getState().updateConfig((c) => ({ ...c, version: 2 }));

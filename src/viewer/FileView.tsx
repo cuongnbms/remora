@@ -6,6 +6,8 @@ import { absPath, location } from '../lib/project';
 import type { AppErrorKind, FileContent, Project } from '../lib/types';
 import { useStore } from '../store';
 import { CodeIcon, CopyIcon, EyeIcon, ListIcon } from '../filepanel/icons';
+import { ErrorState, useHostDown } from '../components/ErrorState';
+import { fileErrorTitle, isConnectionError } from '../lib/errors';
 import { CodeView } from './CodeView';
 import { MarkdownView } from './MarkdownView';
 
@@ -23,6 +25,7 @@ export function FileView({ project, path }: { project: Project; path: string }) 
   const loadSeq = useRef(0);
   const batch = useStore((s) => s.lastBatch);
   const reloadSeq = useStore((s) => s.reloadSeq);
+  const hostDown = useHostDown(project.host);
   const fullPath = absPath(project, path);
   const markdown = isMarkdown(path);
   const image = isImage(path);
@@ -84,7 +87,19 @@ export function FileView({ project, path }: { project: Project; path: string }) 
 
   const errorText = error?.kind === 'Binary' ? 'Binary file — not shown' : error?.message;
   let body: React.ReactNode;
-  if (error && !data) body = <div className="pad error">{errorText}</div>;
+  if (error && !data) {
+    if (error.kind === 'Binary') body = <ErrorState quiet title={errorText!} />;
+    // The viewer's connection banner already carries the ssh detail and a retry.
+    else if (hostDown && isConnectionError(error.kind)) body = <ErrorState quiet title={`Waiting for ${project.host} to reconnect…`} />;
+    else
+      body = (
+        <ErrorState
+          title={fileErrorTitle(error.kind, project.host)}
+          detail={error.message}
+          action={<button onClick={() => void load(false)}>Retry</button>}
+        />
+      );
+  }
   else if (!data) body = <div className="pad muted">Loading…</div>;
   else if (image)
     body = (
@@ -150,7 +165,11 @@ export function FileView({ project, path }: { project: Project; path: string }) 
         )}
       </div>
       {removed && <div className="banner warn">File removed — showing the last loaded content</div>}
-      {data && error && <div className="banner error">Reload failed: {errorText} — showing the last loaded content</div>}
+      {data && error && (
+        <div className="banner error">
+          {hostDown && isConnectionError(error.kind) ? 'Offline' : `Reload failed: ${errorText}`} — showing the last loaded content
+        </div>
+      )}
       {data?.truncated && <div className="banner warn">File is larger than 2 MB — showing the first 2 MB</div>}
       {body}
     </div>

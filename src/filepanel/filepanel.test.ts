@@ -327,18 +327,63 @@ describe('FilePanel', () => {
     listDir.mockRejectedValue(notFound());
     await render();
 
-    expect(container.querySelector('.pad.error')?.textContent).toContain('Path not found.');
-    await click(container.querySelector('.pad.error button')!);
+    expect(container.querySelector('.error-state .error-title')?.textContent).toBe('Project folder not found');
+    await click(container.querySelector('.error-state button')!);
     expect(useStore.getState().editRequest).toBe('p1');
   });
 
-  test('a non-NotFound directory error is shown inline', async () => {
+  test('a root load error shows a readable state with the detail and a retry', async () => {
     selectProject();
     listDir.mockRejectedValue(Object.assign(new Error('ssh failed'), { kind: 'Ssh' }));
     await render();
 
-    expect(container.querySelector('.tree .error')?.textContent).toBe('ssh failed');
-    expect(container.querySelector('.pad.error')).toBeNull();
+    expect(container.querySelector('.tree .error-state .error-title')?.textContent).toBe('Can’t reach devbox');
+    expect(container.querySelector('.tree .error-state .error-detail')?.textContent).toBe('ssh failed');
+
+    listDir.mockResolvedValue([file('a.md')]);
+    await click(container.querySelector('.tree .error-state button')!);
+    expect(treeLabels()).toEqual(['a.md']);
+  });
+
+  test('while the host is down the tree defers to the connection banner', async () => {
+    selectProject();
+    useStore.setState({ hosts: { devbox: { host: 'devbox', state: 'error', message: 'Host is down' } } });
+    listDir.mockRejectedValue(Object.assign(new Error('Operation timed out'), { kind: 'Ssh' }));
+    await render();
+
+    expect(container.querySelector('.tree .error-state')?.textContent).toBe('Waiting for devbox to reconnect…');
+    expect(container.textContent).not.toContain('Operation timed out');
+  });
+
+  test('a subfolder load error stays one short row with the detail in its tooltip', async () => {
+    selectProject();
+    listDir.mockImplementation(async (_p: string, dir: string) => {
+      if (dir === 'docs') throw Object.assign(new Error('permission denied'), { kind: 'Other' });
+      return [file('docs', 'dir')];
+    });
+    await render();
+    await click(byTitle('docs')!);
+
+    const row = container.querySelector('.tree-row.error')!;
+    expect(row.textContent).toBe('Couldn’t load — click to retry');
+    expect(row.getAttribute('title')).toBe('permission denied');
+
+    listDir.mockResolvedValue([file('guide.md')]);
+    await click(row);
+    expect(treeLabels()).toEqual(['docs', 'guide.md']);
+  });
+
+  test('a reload request reloads the expanded folders', async () => {
+    selectProject();
+    listDir.mockRejectedValue(Object.assign(new Error('ssh failed'), { kind: 'Ssh' }));
+    await render();
+
+    listDir.mockResolvedValue([file('a.md')]);
+    await act(async () => {
+      useStore.getState().requestReload();
+      await flush();
+    });
+    expect(treeLabels()).toEqual(['a.md']);
   });
 
   test('the active tree row is highlighted', async () => {
@@ -408,7 +453,7 @@ describe('FileTree transfers', () => {
     selectProject();
     listDir.mockRejectedValue(Object.assign(new Error('Connection refused'), { kind: 'Ssh' }));
     await render();
-    pointAt(container.querySelector('.tree-row.error'));
+    pointAt(container.querySelector('.tree .error-state'));
     await fire({ type: 'drop', paths: ['/Users/me/a.png'], position: { x: 5, y: 5 } });
     expect(startUpload).toHaveBeenCalledWith('p1', '', ['/Users/me/a.png']);
   });

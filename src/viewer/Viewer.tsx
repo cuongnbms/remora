@@ -1,3 +1,4 @@
+import { AlertIcon } from '../filepanel/icons';
 import { api } from '../lib/api';
 import { findProject } from '../lib/configOps';
 import { EMPTY_LIST, useStore } from '../store';
@@ -28,9 +29,14 @@ export function Viewer() {
   return (
     <main className="viewer">
       {host?.state === 'error' && (
-        <div className="banner error">
-          <strong>{project.host} disconnected — retrying…</strong>
-          <span className="small">{host.message}</span>
+        <div className="banner error host-banner" role="alert">
+          <AlertIcon />
+          <strong>Can’t reach {project.host} — retrying…</strong>
+          {host.message && (
+            <span className="banner-detail" title={host.message}>
+              {host.message}
+            </span>
+          )}
           <button onClick={() => void retry()}>Retry</button>
         </div>
       )}

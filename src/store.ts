@@ -220,7 +220,9 @@ export const useStore = create<State>((set, get) => {
     },
 
     setHost(status) {
-      set((s) => ({ hosts: { ...s.hosts, [status.host]: status } }));
+      // A host coming back from an error reloads whatever failed to load while it was down.
+      const recovered = get().hosts[status.host]?.state === 'error' && status.state === 'connected';
+      set((s) => ({ hosts: { ...s.hosts, [status.host]: status }, reloadSeq: recovered ? s.reloadSeq + 1 : s.reloadSeq }));
     },
 
     setToast(toast) {

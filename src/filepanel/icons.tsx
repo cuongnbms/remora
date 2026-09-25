@@ -111,3 +111,10 @@ export const FitIcon = () => (
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
   </Svg>
 );
+
+export const AlertIcon = () => (
+  <Svg name="alert" size={16}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v4.5M12 16h.01" />
+  </Svg>
+);
