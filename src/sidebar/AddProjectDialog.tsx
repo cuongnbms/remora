@@ -148,7 +148,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         </div>
         <label>
           Name
-          <input value={effectiveName} onChange={(e) => { setNameTouched(true); setName(e.target.value); }} />
+          <input spellCheck={false} autoCapitalize="off" autoCorrect="off" value={effectiveName} onChange={(e) => { setNameTouched(true); setName(e.target.value); }} />
         </label>
         <label>
           Group
@@ -160,7 +160,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         {groupId === NEW_GROUP && (
           <label>
             New group name
-            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Default" />
+            <input spellCheck={false} autoCapitalize="off" autoCorrect="off" value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Default" />
           </label>
         )}
         {error && <p className="error">{error}</p>}

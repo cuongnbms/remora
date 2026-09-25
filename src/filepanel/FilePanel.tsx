@@ -55,6 +55,9 @@ function ProjectFiles({ project }: { project: Project }) {
       <input
         className="find"
         placeholder="Find files"
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {

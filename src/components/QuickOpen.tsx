@@ -30,6 +30,9 @@ export function QuickOpen() {
           autoFocus
           value={query}
           placeholder="Go to file…"
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') {
