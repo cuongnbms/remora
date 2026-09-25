@@ -99,3 +99,15 @@ export const CloseIcon = () => (
     <path d="M6 6l12 12M18 6 6 18" />
   </Svg>
 );
+
+export const MinusIcon = () => (
+  <Svg name="minus" size={16}>
+    <path d="M5 12h14" />
+  </Svg>
+);
+
+export const FitIcon = () => (
+  <Svg name="fit" size={15}>
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </Svg>
+);

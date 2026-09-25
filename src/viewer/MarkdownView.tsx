@@ -7,6 +7,7 @@ import { renderMermaid } from '../lib/mermaid';
 import { isExternal, resolveRel, splitHash } from '../lib/paths';
 import type { Project } from '../lib/types';
 import { useStore } from '../store';
+import { DiagramZoom } from './DiagramZoom';
 import { Toc } from './Toc';
 
 export function scrollToId(root: HTMLElement | null, id: string) {
@@ -27,6 +28,7 @@ type Props = {
 export function MarkdownView({ project, path, source, scrollRef, onRendered, showToc, onTocChange }: Props) {
   const [rendered, setRendered] = useState<Rendered | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState<SVGSVGElement | null>(null);
   const bodyRef = useRef<HTMLElement>(null);
   const dark = useIsDark();
   const pendingHash = useStore((s) => s.pendingHash);
@@ -66,6 +68,9 @@ export function MarkdownView({ project, path, source, scrollRef, onRendered, sho
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rendered]);
 
+  // A reload or theme change redraws the document, so the zoomed copy would be stale.
+  useEffect(() => setZoomed(null), [rendered]);
+
   useEffect(() => {
     if (!pendingHash || !rendered) return;
     scrollToId(bodyRef.current, pendingHash);
@@ -87,7 +92,11 @@ export function MarkdownView({ project, path, source, scrollRef, onRendered, sho
   const onClick = (e: React.MouseEvent) => {
     const a = (e.target as HTMLElement).closest('a');
     const href = a?.getAttribute('href');
-    if (!href) return;
+    if (!href) {
+      const diagram = (e.target as Element).closest('.mermaid-svg')?.querySelector('svg');
+      if (diagram) setZoomed(diagram);
+      return;
+    }
     e.preventDefault();
     if (href.startsWith('#')) {
       scrollToId(bodyRef.current, decodeURIComponent(href.slice(1)));
@@ -117,6 +126,7 @@ export function MarkdownView({ project, path, source, scrollRef, onRendered, sho
           <p className="muted pad">Rendering…</p>
         )}
       </div>
+      {zoomed && <DiagramZoom svg={zoomed} onClose={() => setZoomed(null)} />}
     </div>
   );
 }

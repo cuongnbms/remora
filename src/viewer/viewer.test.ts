@@ -708,6 +708,127 @@ describe('MarkdownView', () => {
   });
 });
 
+describe('DiagramZoom', () => {
+  const drawDiagram = () =>
+    renderMermaid.mockImplementationOnce(async (body: HTMLElement) => {
+      body.querySelectorAll('pre.mermaid-block').forEach((el) => {
+        const div = document.createElement('div');
+        div.className = 'mermaid-svg';
+        div.innerHTML = '<svg viewBox="0 0 400 200" style="max-width: 400px;"><g><text>A</text></g></svg>';
+        el.replaceWith(div);
+      });
+    });
+
+  const open = async () => {
+    drawDiagram();
+    selectProject();
+    await render(
+      createElement(MarkdownView, {
+        project,
+        path: 'docs/a.md',
+        source: '```mermaid\nflowchart LR\n  A --> B\n```\n',
+        scrollRef: createRef<HTMLDivElement>(),
+        onRendered: vi.fn(),
+        showToc: true,
+        onTocChange: vi.fn(),
+      }),
+    );
+    await waitFor(() => expect(container.querySelector('.mermaid-svg svg')).not.toBeNull());
+    await act(async () => {
+      container.querySelector('.mermaid-svg text')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+    });
+  };
+
+  const overlay = () => document.querySelector<HTMLElement>('.diagram-zoom');
+  const content = () => document.querySelector<HTMLElement>('.diagram-zoom-content')!;
+  const level = () => document.querySelector('.diagram-zoom-level')!.textContent;
+  const overlayButton = (label: string) => overlay()!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+  const key = (k: string) =>
+    act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
+      await flush();
+    });
+
+  test('clicking a diagram opens a copy at its natural size without the max-width cap', async () => {
+    await open();
+    expect(overlay()).not.toBeNull();
+    const copy = content().querySelector('svg')!;
+    expect(copy).not.toBe(container.querySelector('.mermaid-svg svg'));
+    expect(copy.getAttribute('width')).toBe('400');
+    expect(copy.getAttribute('height')).toBe('200');
+    expect(copy.getAttribute('style')).toBeNull();
+    // The document's own diagram is untouched.
+    expect(container.querySelector('.mermaid-svg svg')!.getAttribute('style')).toBe('max-width: 400px;');
+    expect(level()).toBe('100%');
+  });
+
+  test('toolbar buttons and keys zoom, fit and close', async () => {
+    await open();
+    await click(overlayButton('Zoom in'));
+    expect(level()).toBe('125%');
+    await key('+');
+    expect(level()).toBe('156%');
+    await click(overlayButton('Zoom out'));
+    expect(level()).toBe('125%');
+    await key('0');
+    expect(level()).toBe('100%');
+    await key('-');
+    expect(level()).toBe('80%');
+    await click(overlayButton('Fit'));
+    expect(level()).toBe('100%');
+
+    await key('Escape');
+    expect(overlay()).toBeNull();
+
+    await act(async () => {
+      container.querySelector('.mermaid-svg svg')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flush();
+    });
+    await click(overlayButton('Close'));
+    expect(overlay()).toBeNull();
+  });
+
+  test('keys typed into an input stacked above the overlay are left alone', async () => {
+    await open();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    const ev = new KeyboardEvent('keydown', { key: '-', bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(ev);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await flush();
+    });
+    input.remove();
+    expect(ev.defaultPrevented).toBe(false);
+    expect(level()).toBe('100%');
+    expect(overlay()).not.toBeNull();
+  });
+
+  test('the wheel zooms instead of scrolling, and dragging pans', async () => {
+    await open();
+    const stage = document.querySelector<HTMLElement>('.diagram-zoom-stage')!;
+    const wheel = new WheelEvent('wheel', { deltaY: -100, clientX: 0, clientY: 0, cancelable: true, bubbles: true });
+    await act(async () => {
+      stage.dispatchEvent(wheel);
+      await flush();
+    });
+    expect(wheel.defaultPrevented).toBe(true);
+    expect(level()).toBe('122%');
+
+    const before = content().style.transform;
+    await act(async () => {
+      stage.dispatchEvent(new MouseEvent('pointerdown', { button: 0, clientX: 10, clientY: 10, bubbles: true }));
+      stage.dispatchEvent(new MouseEvent('pointermove', { clientX: 40, clientY: 30, bubbles: true }));
+      stage.dispatchEvent(new MouseEvent('pointerup', { clientX: 40, clientY: 30, bubbles: true }));
+      stage.dispatchEvent(new MouseEvent('pointermove', { clientX: 90, clientY: 90, bubbles: true }));
+      await flush();
+    });
+    expect(before).toBe('translate(0px, 0px) scale(1.2214027581601699)');
+    expect(content().style.transform).toBe('translate(30px, 20px) scale(1.2214027581601699)');
+  });
+});
+
 describe('CodeView', () => {
   test('highlights the source and notifies onRendered', async () => {
     const onRendered = vi.fn();
