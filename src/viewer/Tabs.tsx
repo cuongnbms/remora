@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
+import { CloseIcon } from '../filepanel/icons';
 import { basename } from '../lib/paths';
 import { useStore } from '../store';
 
@@ -37,7 +38,9 @@ export function Tabs({ tabs, active, preview }: { tabs: string[]; active: string
           onContextMenu={(e) => tabMenu(e, t)}
         >
           <span>{basename(t)}</span>
-          <button className="tab-close" onClick={(e) => { e.stopPropagation(); closeTab(t); }}>×</button>
+          <button className="tab-close" title="Close" aria-label="Close" onClick={(e) => { e.stopPropagation(); closeTab(t); }}>
+            <CloseIcon />
+          </button>
         </div>
       ))}
       {menu && <ContextMenu {...menu} onClose={closeMenu} />}

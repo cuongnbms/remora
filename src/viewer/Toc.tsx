@@ -6,6 +6,7 @@ const WIDTH_KEY = 'remora.tocWidth';
 const DEFAULT_WIDTH = 240;
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 480;
+const LEVELS = [1, 2, 3];
 
 const clampWidth = (w: number) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(w)));
 
@@ -88,9 +89,23 @@ export function Toc({ items, activeId, onSelect }: { items: TocItem[]; activeId:
     return { item, key, hidden, isCollapsed, hasChildren };
   });
 
+  // Shows headings down to `level`: every heading at that level or deeper folds its subtree, shallower ones unfold.
+  const collapseTo = (level: number) =>
+    setCollapsed(new Set(rows.filter((r) => r.hasChildren && r.item.level >= level).map((r) => r.key)));
+
   return (
     <>
       <nav className="toc" style={{ width }}>
+        <div className="toc-header">
+          <span className="toc-title">Contents</span>
+          <span className="toc-levels">
+            {LEVELS.map((n) => (
+              <button key={n} title={`Show up to H${n}`} aria-label={`Show up to H${n}`} onClick={() => collapseTo(n)}>
+                H{n}
+              </button>
+            ))}
+          </span>
+        </div>
         <ul>
           {rows
             .filter((r) => !r.hidden)

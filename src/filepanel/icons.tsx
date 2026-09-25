@@ -93,3 +93,9 @@ export const ListIcon = () => (
     <path d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13" />
   </Svg>
 );
+
+export const CloseIcon = () => (
+  <Svg name="close" size={16}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Svg>
+);

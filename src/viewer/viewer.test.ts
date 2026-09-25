@@ -151,7 +151,7 @@ describe('Tabs', () => {
     await render(createElement(Tabs, { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null }));
 
     const tabs = [...container.querySelectorAll<HTMLElement>('.tab')];
-    expect(tabs.map((t) => t.textContent)).toEqual(['a.md×', 'b.ts×']);
+    expect(tabs.map((t) => t.textContent)).toEqual(['a.md', 'b.ts']);
     expect(tabs[0].className).toBe('tab');
     expect(tabs[1].className).toBe('tab active');
     expect(tabs[0].title).toBe('docs/a.md');
@@ -160,7 +160,7 @@ describe('Tabs', () => {
     expect(useStore.getState().views.p1.active).toBe('docs/a.md');
   });
 
-  test('closes a tab from its × without activating it', async () => {
+  test('closes a tab from its close button without activating it', async () => {
     selectProject();
     useStore.setState({ views: { p1: { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null, files: null, filesGeneration: 0 } } });
     await render(createElement(Tabs, { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null }));
@@ -253,6 +253,37 @@ describe('Toc', () => {
     expect(labels()).toEqual(['A', 'A1', 'A2', 'B']);
     expect(onSelect).not.toHaveBeenCalled();
   });
+
+  test('the H1/H2/H3 buttons collapse the outline to that heading level', async () => {
+    await render(
+      createElement(Toc, {
+        items: [
+          { level: 1, text: 'A', id: 'a' },
+          { level: 2, text: 'A1', id: 'a1' },
+          { level: 3, text: 'A1x', id: 'a1x' },
+          { level: 4, text: 'A1x-deep', id: 'a1xd' },
+          { level: 2, text: 'A2', id: 'a2' },
+          { level: 1, text: 'B', id: 'b' },
+        ],
+        activeId: null,
+        onSelect: vi.fn(),
+      }),
+    );
+    const level = (n: number) => container.querySelector<HTMLElement>(`.toc-levels button[aria-label="Show up to H${n}"]`)!;
+
+    await click(level(1));
+    expect(labels()).toEqual(['A', 'B']);
+    await click(level(2));
+    expect(labels()).toEqual(['A', 'A1', 'A2', 'B']);
+    await click(level(3));
+    expect(labels()).toEqual(['A', 'A1', 'A1x', 'A2', 'B']);
+    // A level button overrides earlier per-heading toggles.
+    await click(container.querySelector<HTMLElement>('.toc-toggle[role=button]')!);
+    expect(labels()).toEqual(['A', 'B']);
+    await click(level(2));
+    expect(labels()).toEqual(['A', 'A1', 'A2', 'B']);
+  });
+
   test('resizes by dragging the handle, clamps, persists and resets on double-click', async () => {
     const renderToc = () =>
       render(createElement(Toc, { items: [{ level: 1, text: 'A', id: 'a' }], activeId: null, onSelect: vi.fn() }));
@@ -319,7 +350,7 @@ describe('Viewer', () => {
     });
 
     expect(container.querySelectorAll('.tab').length).toBe(1);
-    expect(container.querySelector('.tab')?.textContent).toBe('a.ts×');
+    expect(container.querySelector('.tab')?.textContent).toBe('a.ts');
     expect(readFile).toHaveBeenCalledWith('p1', 'src/a.ts');
     await waitFor(() => expect(container.querySelector('.code-view .shiki')).not.toBeNull());
   });
