@@ -388,9 +388,19 @@ describe('FileView', () => {
     await render(createElement(FileView, { project: { ...project, path: '/w/bm/' }, path: 'a.ts' }));
 
     expect(container.querySelector('.breadcrumb .path')?.textContent).toBe('devbox:/w/bm/a.ts');
-    await click(button('Copy path'));
+    await click(container.querySelector('.breadcrumb .path')!);
     // The breadcrumb is host-qualified; the copied value is the remote path only.
     expect(writeText).toHaveBeenCalledWith('/w/bm/a.ts');
+  });
+
+  test('the copy button copies the file contents', async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    readFile.mockResolvedValue({ content: 'const a = 1;\n', truncated: false });
+    await render(createElement(FileView, { project, path: 'a.ts' }));
+
+    await click(button('Copy contents'));
+    expect(writeText).toHaveBeenCalledWith('const a = 1;\n');
   });
 
   test('shows binary files and load errors inline', async () => {

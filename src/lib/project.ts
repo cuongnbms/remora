@@ -11,3 +11,9 @@ export function isLocal(p: Pick<Project, 'host'>): boolean {
 export function location(p: Pick<Project, 'host' | 'path'>, abs: string = p.path): string {
   return isLocal(p) ? abs : `${p.host}:${abs}`;
 }
+
+/** Absolute path of `rel` inside the project ("" is the project root). */
+export function absPath(p: Pick<Project, 'path'>, rel: string): string {
+  const root = p.path.replace(/\/$/, '');
+  return rel ? `${root}/${rel}` : root;
+}

@@ -2,7 +2,10 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { api, errorKind, errorMessage } from '../lib/api';
+import { copyText } from '../lib/clipboard';
+import { findProject } from '../lib/configOps';
 import { dropDirAt } from '../lib/dropTarget';
+import { absPath } from '../lib/project';
 import { startDownload, startUpload } from '../lib/transfer';
 import { dirsToRefresh } from '../lib/tree';
 import type { AppErrorKind, Entry } from '../lib/types';
@@ -59,7 +62,16 @@ export function FileTree({ projectId }: { projectId: string }) {
 
   const rowMenu = (e: React.MouseEvent, rel: string) => {
     e.preventDefault();
-    setMenu({ x: e.clientX, y: e.clientY, items: [{ label: 'Download', onSelect: () => void startDownload(projectId, rel) }] });
+    const project = findProject(useStore.getState().config, projectId);
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: 'Download', onSelect: () => void startDownload(projectId, rel) },
+        { label: 'Copy Path', disabled: !project, onSelect: () => project && void copyText(absPath(project, rel), 'path') },
+        { label: 'Copy Relative Path', onSelect: () => void copyText(rel, 'relative path') },
+      ],
+    });
   };
 
   const load = useCallback(

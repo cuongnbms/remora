@@ -88,7 +88,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 .tab:hover .tab-close, .tab.active .tab-close { visibility: visible; }
 .fileview { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .breadcrumb { display: flex; gap: 8px; align-items: center; padding: 4px 14px 6px; font-family: var(--font-code); font-size: .92rem; }
-.breadcrumb .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.breadcrumb .path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); cursor: pointer; }
+.breadcrumb .path:hover { color: var(--fg); }
 .banner { padding: 6px 12px; margin: 0 8px 6px; border-radius: var(--radius-sm); display: flex; gap: 8px; align-items: center; }
 .banner.error { background: color-mix(in srgb, var(--error) 15%, transparent); }
 .banner.warn { background: color-mix(in srgb, var(--warn) 15%, transparent); }
@@ -113,7 +114,8 @@ body.resizing-col { cursor: col-resize; user-select: none; }
   background: repeating-conic-gradient(var(--bg-hover) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
 .image-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-.markdown-body { margin: 0; padding: 24px 40px 80px; font-size: 1.15rem; line-height: 1.65; }
+.markdown-body { margin: 0; padding: 12px 40px 80px; font-size: 1.15rem; line-height: 1.65; }
+.markdown-body > :first-child { margin-top: 0; }
 .markdown-body h1, .markdown-body h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; }
 .markdown-body ul { list-style: disc; padding-left: 2em; }
 .markdown-body ol { list-style: decimal; padding-left: 2em; }

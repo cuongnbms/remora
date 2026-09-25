@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorKind, errorMessage } from '../lib/api';
 import { dirname, isImage, isMarkdown } from '../lib/paths';
-import { location } from '../lib/project';
+import { copyText } from '../lib/clipboard';
+import { absPath, location } from '../lib/project';
 import type { AppErrorKind, FileContent, Project } from '../lib/types';
 import { useStore } from '../store';
 import { CodeIcon, CopyIcon, EyeIcon, ListIcon } from '../filepanel/icons';
@@ -22,7 +23,7 @@ export function FileView({ project, path }: { project: Project; path: string }) 
   const loadSeq = useRef(0);
   const batch = useStore((s) => s.lastBatch);
   const reloadSeq = useStore((s) => s.reloadSeq);
-  const fullPath = `${project.path.replace(/\/$/, '')}/${path}`;
+  const fullPath = absPath(project, path);
   const markdown = isMarkdown(path);
   const image = isImage(path);
 
@@ -113,7 +114,9 @@ export function FileView({ project, path }: { project: Project; path: string }) 
   return (
     <div className="fileview">
       <div className="breadcrumb">
-        <span className="path" title={fullPath}>{location(project, fullPath)}</span>
+        <span className="path" title="Click to copy path" onClick={() => void copyText(fullPath, 'path')}>
+          {location(project, fullPath)}
+        </span>
         {markdown && mode === 'rendered' && hasToc && (
           <button
             className={'icon-btn' + (showToc ? ' on' : '')}
@@ -125,9 +128,16 @@ export function FileView({ project, path }: { project: Project; path: string }) 
             <ListIcon />
           </button>
         )}
-        <button className="icon-btn" title="Copy path" aria-label="Copy path" onClick={() => void navigator.clipboard.writeText(fullPath)}>
-          <CopyIcon />
-        </button>
+        {!image && data && (
+          <button
+            className="icon-btn"
+            title={data.truncated ? 'Copy contents (first 2 MB only)' : 'Copy contents'}
+            aria-label="Copy contents"
+            onClick={() => void copyText(data.content, data.truncated ? 'contents (first 2 MB only)' : 'contents')}
+          >
+            <CopyIcon />
+          </button>
+        )}
         {markdown && (
           <button
             className="icon-btn"

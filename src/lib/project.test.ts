@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { LOCAL_HOST, isLocal, location } from './project';
+import { LOCAL_HOST, absPath, isLocal, location } from './project';
 
 const remote = { id: 'r', name: 'r', host: 'devbox', path: '/home/me/repo' };
 const local = { id: 'l', name: 'l', host: LOCAL_HOST, path: '/Users/me/notes' };
@@ -16,5 +16,11 @@ describe('project', () => {
     expect(location(local)).toBe('/Users/me/notes');
     expect(location(remote, '/home/me/repo/a.md')).toBe('devbox:/home/me/repo/a.md');
     expect(location(local, '/Users/me/notes/a.md')).toBe('/Users/me/notes/a.md');
+  });
+
+  test('absPath joins the project root and a relative path', () => {
+    expect(absPath(remote, 'docs/a.md')).toBe('/home/me/repo/docs/a.md');
+    expect(absPath({ ...remote, path: '/home/me/repo/' }, 'a.md')).toBe('/home/me/repo/a.md');
+    expect(absPath(remote, '')).toBe('/home/me/repo');
   });
 });
