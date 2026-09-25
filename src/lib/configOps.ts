@@ -53,6 +53,12 @@ export function moveProject(c: Config, id: string, toGroupId: string): Config {
   return addProject(removeProject(c, id), { groupId: toGroupId }, p);
 }
 
+/** Appends an empty top-level group; a group with that name already there is left as the only one. */
+export function addGroup(c: Config, name: string): Config {
+  if (c.groups.some((g) => g.name === name)) return c;
+  return { ...c, groups: [...c.groups, { id: newId(), name, collapsed: false, projects: [], subgroups: [] }] };
+}
+
 export function addSubgroup(c: Config, groupId: string, name: string): Config {
   if (!c.groups.some((g) => g.id === groupId)) throw new Error('Group not found');
   const sub: Subgroup = { id: newId(), name, collapsed: false, projects: [] };

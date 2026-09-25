@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { PromptDialog, type PromptState } from '../components/PromptDialog';
 import { isLocal, location } from '../lib/project';
-import { addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from '../lib/configOps';
+import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from '../lib/configOps';
 import type { Group, Project, Subgroup } from '../lib/types';
 import { useStore } from '../store';
 import { ChevronIcon, GearIcon, PlusIcon } from '../filepanel/icons';
@@ -84,6 +84,21 @@ export function ProjectSidebar() {
     });
   };
 
+  // Empty space in the sidebar; rows handle their own menu and mark the event handled first. Dialogs render
+  // inside the sidebar too, and their fields keep the native edit menu.
+  const sidebarMenu = (e: React.MouseEvent) => {
+    if (e.defaultPrevented || (e.target as Element).closest('.modal-backdrop, .context-menu')) return;
+    e.preventDefault();
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: 'New project…', onSelect: () => setAdding(true) },
+        { label: 'New group…', onSelect: () => setPrompt({ title: 'New group', initial: '', onSubmit: (name) => void updateConfig((c) => addGroup(c, name)) }) },
+      ],
+    });
+  };
+
   const groupRow = (g: Group | Subgroup, sub: boolean) => (
     <div
       className={'group-row' + (sub ? ' subgroup' : '') + (g.collapsed ? '' : ' open')}
@@ -111,7 +126,7 @@ export function ProjectSidebar() {
     ));
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" onContextMenu={sidebarMenu}>
       <div className="sidebar-header">
         <span>Projects</span>
         <button className="icon-btn" title="Add project" aria-label="Add project" onClick={() => setAdding(true)}>
