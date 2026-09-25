@@ -1,5 +1,7 @@
 export type Project = { id: string; name: string; host: string; path: string };
-export type Group = { id: string; name: string; collapsed: boolean; projects: Project[] };
+/** A group nested inside a top-level group; it cannot hold further subgroups. */
+export type Subgroup = { id: string; name: string; collapsed: boolean; projects: Project[] };
+export type Group = Subgroup & { subgroups: Subgroup[] };
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type Settings = { theme: ThemeMode; uiFont: string | null; codeFont: string | null; fontSize: number; excludes: string[] };
 export type Config = { version: number; groups: Group[]; settings: Settings };

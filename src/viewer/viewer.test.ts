@@ -41,6 +41,7 @@ const config: Config = {
       id: 'g1',
       name: 'G',
       collapsed: false,
+      subgroups: [],
       projects: [{ id: 'p1', name: 'my-repo', host: 'devbox', path: '/w/bm' }],
     },
   ],

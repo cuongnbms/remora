@@ -27,6 +27,20 @@ pub struct Group {
     pub collapsed: bool,
     #[serde(default)]
     pub projects: Vec<Project>,
+    #[serde(default)]
+    pub subgroups: Vec<Subgroup>,
+}
+
+/// A group nested inside a top-level group; it cannot hold further subgroups.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Subgroup {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub collapsed: bool,
+    #[serde(default)]
+    pub projects: Vec<Project>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +104,15 @@ impl Default for Config {
             groups: Vec::new(),
             settings: Settings::default(),
         }
+    }
+}
+
+impl Config {
+    /// Every project in sidebar order: a group's subgroups come before its own projects.
+    pub fn projects(&self) -> impl Iterator<Item = &Project> {
+        self.groups.iter().flat_map(|g| {
+            g.subgroups.iter().flat_map(|s| s.projects.iter()).chain(g.projects.iter())
+        })
     }
 }
 
@@ -164,9 +187,7 @@ impl ConfigStore {
         self.current
             .lock()
             .unwrap()
-            .groups
-            .iter()
-            .flat_map(|g| g.projects.iter())
+            .projects()
             .find(|p| p.id == id)
             .cloned()
             .ok_or_else(|| AppError::NotFound(format!("project {id} not found")))
@@ -181,7 +202,7 @@ fn validate(cfg: &Config) -> AppResult<()> {
         )));
     }
     let mut ids = HashSet::new();
-    for p in cfg.groups.iter().flat_map(|g| g.projects.iter()) {
+    for p in cfg.projects() {
         validate_host(&p.host)?;
         validate_root(&p.path)?;
         if !ids.insert(p.id.as_str()) {
@@ -262,6 +283,7 @@ mod tests {
                     host: "devbox".into(),
                     path: "/home/me/my-repo".into(),
                 }],
+                subgroups: vec![],
             }],
             settings: Settings::default(),
         }
@@ -378,6 +400,47 @@ mod tests {
         assert!(warning.is_none());
         assert!(store.get().groups[0].projects.is_empty());
         assert!(!store.get().groups[0].collapsed);
+        assert!(store.get().groups[0].subgroups.is_empty());
+    }
+
+    fn with_subgroup() -> Config {
+        let mut cfg = sample();
+        cfg.groups[0].subgroups.push(Subgroup {
+            id: "s1".into(),
+            name: "Api".into(),
+            collapsed: true,
+            projects: vec![Project {
+                id: "p2".into(),
+                name: "api".into(),
+                host: "devbox".into(),
+                path: "/home/me/api".into(),
+            }],
+        });
+        cfg
+    }
+
+    #[test]
+    fn subgroups_roundtrip_and_their_projects_are_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.json");
+        let (store, _) = ConfigStore::load(path.clone());
+        store.save(with_subgroup()).unwrap();
+        assert_eq!(store.project("p2").unwrap().path, "/home/me/api");
+        let (reloaded, warning) = ConfigStore::load(path);
+        assert!(warning.is_none());
+        assert_eq!(reloaded.get(), with_subgroup());
+    }
+
+    #[test]
+    fn save_validates_projects_in_subgroups() {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, _) = ConfigStore::load(dir.path().join("config.json"));
+        let mut bad_host = with_subgroup();
+        bad_host.groups[0].subgroups[0].projects[0].host = "-oProxyCommand=x".into();
+        assert!(store.save(bad_host).is_err());
+        let mut dup = with_subgroup();
+        dup.groups[0].subgroups[0].projects[0].id = "p1".into();
+        assert!(matches!(store.save(dup), Err(AppError::Config(_))));
     }
 
     #[test]

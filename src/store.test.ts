@@ -19,6 +19,7 @@ const config: Config = {
       id: 'g1',
       name: 'G',
       collapsed: false,
+      subgroups: [],
       projects: [
         { id: 'p1', name: 'P1', host: 'h', path: '/x' },
         { id: 'p2', name: 'P2', host: 'h', path: '/y' },
@@ -44,7 +45,7 @@ const reset = () =>
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-const group = (name: string): Group => ({ id: name, name, collapsed: false, projects: [] });
+const group = (name: string): Group => ({ id: name, name, collapsed: false, projects: [], subgroups: [] });
 
 beforeEach(() => {
   localStorage.clear();

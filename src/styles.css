@@ -51,7 +51,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .sidebar-footer { display: flex; padding: 6px 8px 8px; flex: none; }
 .group-row { display: flex; align-items: center; gap: 4px; padding: 4px 8px; margin-top: 2px; font-weight: 600; cursor: pointer; user-select: none; border-radius: var(--radius-sm); }
 .group-row:hover { background: var(--bg-hover); }
+.group-row.subgroup { padding-left: 18px; margin-top: 0; font-weight: 400; }
 .project-row { display: flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 8px 2px 18px; cursor: pointer; border-radius: var(--radius-sm); }
+.project-row.nested { padding-left: 32px; }
 .project-row:hover, .tree-row:hover, .file-results li:hover { background: var(--bg-hover); }
 .project-row.active, .tree-row.active { background: var(--bg-active); }
 .project-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

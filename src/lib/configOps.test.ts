@@ -1,14 +1,14 @@
 import { expect, test } from 'vitest';
 import type { Config } from './types';
-import { addProject, findProject, flatProjects, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from './configOps';
+import { addProject, addSubgroup, containers, findProject, flatProjects, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from './configOps';
 import { DEFAULT_SETTINGS } from './settings';
 
 const base: Config = {
   version: 1,
   settings: DEFAULT_SETTINGS,
   groups: [
-    { id: 'g1', name: 'Mine', collapsed: false, projects: [{ id: 'p1', name: 'a', host: 'devbox', path: '/a' }] },
-    { id: 'g2', name: 'Work', collapsed: false, projects: [] },
+    { id: 'g1', name: 'Mine', collapsed: false, projects: [{ id: 'p1', name: 'a', host: 'devbox', path: '/a' }], subgroups: [] },
+    { id: 'g2', name: 'Work', collapsed: false, projects: [], subgroups: [] },
   ],
 };
 const p2 = { id: 'p2', name: 'b', host: 'devbox', path: '/b' };
@@ -42,4 +42,65 @@ test('ops do not mutate input', () => {
   addProject(base, { groupId: 'g2' }, p2);
   moveProject(base, 'p1', 'g2');
   expect(JSON.stringify(base)).toBe(snapshot);
+});
+
+const nested: Config = {
+  ...base,
+  groups: [
+    {
+      id: 'g1',
+      name: 'Mine',
+      collapsed: false,
+      projects: [{ id: 'p1', name: 'a', host: 'devbox', path: '/a' }],
+      subgroups: [
+        { id: 's1', name: 'Api', collapsed: false, projects: [{ id: 'p3', name: 'c', host: 'devbox', path: '/c' }] },
+        { id: 's2', name: 'Web', collapsed: false, projects: [] },
+      ],
+    },
+    { id: 'g2', name: 'Work', collapsed: false, projects: [], subgroups: [] },
+  ],
+};
+
+test('addSubgroup appends an empty subgroup to a group only', () => {
+  const next = addSubgroup(base, 'g2', 'Sub');
+  expect(next.groups[1].subgroups).toMatchObject([{ name: 'Sub', collapsed: false, projects: [] }]);
+  expect(() => addSubgroup(nested, 's1', 'Deep')).toThrow('Group not found');
+});
+
+test('flatProjects lists subgroup projects before the group own projects', () => {
+  expect(flatProjects(nested).map((p) => p.id)).toEqual(['p3', 'p1']);
+  expect(findProject(nested, 'p3')?.name).toBe('c');
+});
+
+test('containers lists groups then their subgroups with a path label', () => {
+  expect(containers(nested).map((x) => [x.id, x.label])).toEqual([
+    ['g1', 'Mine'],
+    ['s1', 'Mine / Api'],
+    ['s2', 'Mine / Web'],
+    ['g2', 'Work'],
+  ]);
+});
+
+test('project ops reach into subgroups', () => {
+  expect(findProject(addProject(nested, { groupId: 's2' }, p2), 'p2')).toEqual(p2);
+  expect(addProject(nested, { groupId: 's2' }, p2).groups[0].subgroups[1].projects).toEqual([p2]);
+  expect(findProject(updateProject(nested, 'p3', { name: 'z' }), 'p3')?.name).toBe('z');
+  expect(flatProjects(removeProject(nested, 'p3')).map((p) => p.id)).toEqual(['p1']);
+  const moved = moveProject(nested, 'p1', 's2');
+  expect(moved.groups[0].projects).toHaveLength(0);
+  expect(moved.groups[0].subgroups[1].projects[0].id).toBe('p1');
+  expect(moveProject(nested, 'p3', 'g2').groups[1].projects[0].id).toBe('p3');
+});
+
+test('subgroup rename, toggle, remove only when empty', () => {
+  expect(renameGroup(nested, 's2', 'W').groups[0].subgroups[1].name).toBe('W');
+  expect(toggleGroup(nested, 's1').groups[0].subgroups[0].collapsed).toBe(true);
+  expect(toggleGroup(nested, 's1').groups[0].collapsed).toBe(false);
+  expect(removeGroup(nested, 's2').groups[0].subgroups.map((s) => s.id)).toEqual(['s1']);
+  expect(() => removeGroup(nested, 's1')).toThrow('Group is not empty');
+});
+
+test('a group with subgroups is not empty', () => {
+  const onlySubgroups = removeProject(removeProject(nested, 'p1'), 'p3');
+  expect(() => removeGroup(onlySubgroups, 'g1')).toThrow('Group is not empty');
 });

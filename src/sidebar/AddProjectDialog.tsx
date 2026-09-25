@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../lib/api';
-import { addProject, findProject, newId, type GroupTarget } from '../lib/configOps';
+import { addProject, containers, findProject, newId, type GroupTarget } from '../lib/configOps';
 import { basename } from '../lib/paths';
 import { LOCAL_HOST, isLocal } from '../lib/project';
 import { useStore } from '../store';
@@ -114,7 +114,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         <label>
           Group
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-            {config.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {containers(config).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
             <option value={NEW_GROUP}>New group…</option>
           </select>
         </label>

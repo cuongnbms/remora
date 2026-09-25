@@ -17,6 +17,7 @@ const config: Config = {
       id: 'g1',
       name: 'G',
       collapsed: false,
+      subgroups: [],
       projects: [
         { id: 'p1', name: 'one', host: 'devbox', path: '/w/one' },
         { id: 'p2', name: 'two', host: 'devbox', path: '/w/two' },
