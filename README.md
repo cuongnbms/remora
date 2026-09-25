@@ -19,6 +19,8 @@ A small desktop viewer for projects on remote dev boxes and on this Mac. It show
 
 ## Develop
 
+Toolchain versions (Node, pnpm, Rust) are pinned in `mise.toml`. With [mise](https://mise.jdx.dev): `mise install`, then `mise run dev | test | test:remote | build`. Without mise:
+
 ```bash
 pnpm install
 pnpm tauri dev          # run the app

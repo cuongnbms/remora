@@ -1,0 +1,7 @@
+# Supply-chain hardening. See https://pnpm.io/settings/dependency-resolution
+minimumReleaseAge: 4320 # 3 days, in minutes: don't install versions published more recently
+minimumReleaseAgeExclude:
+  # Exact version only; newer releases still wait. Sanitizer patch bump, kept current on purpose.
+  - dompurify@3.4.16
+trustPolicy: no-downgrade # fail if a package's publish trust level drops versus earlier releases
+blockExoticSubdeps: true # transitive deps can't come from git repos or tarball URLs

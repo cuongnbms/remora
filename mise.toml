@@ -1,0 +1,27 @@
+[tools]
+node = "24"
+pnpm = "11.18.0" # keep in sync with "packageManager" in package.json
+rust = "1.95.0"
+
+[tasks.install]
+description = "Install frontend dependencies"
+run = "pnpm install --frozen-lockfile"
+
+[tasks.dev]
+description = "Run the app"
+depends = ["install"]
+run = "pnpm tauri dev"
+
+[tasks.test]
+description = "Frontend and Rust unit tests"
+depends = ["install"]
+run = ["pnpm test", "cargo test --manifest-path src-tauri/Cargo.toml"]
+
+[tasks."test:remote"]
+description = "Integration tests against a real host: REMORA_TEST_HOST=<ssh alias> mise run test:remote"
+run = "cargo test --manifest-path src-tauri/Cargo.toml --test remote -- --test-threads=1"
+
+[tasks.build]
+description = "Produce Remora.app"
+depends = ["install"]
+run = "pnpm tauri build"
