@@ -71,6 +71,16 @@ fn list_ssh_hosts() -> Vec<String> {
 }
 
 #[tauri::command]
+async fn home_dir(state: State<'_, AppState>, host: String) -> AppResult<String> {
+    paths::validate_host(&host)?;
+    if local_fs::is_local(&host) {
+        let home = dirs::home_dir().ok_or_else(|| AppError::Other("cannot find home directory".into()))?;
+        return Ok(home.to_string_lossy().into_owned());
+    }
+    remote_fs::home_dir(&state.pool, &host).await
+}
+
+#[tauri::command]
 async fn list_remote_dir(state: State<'_, AppState>, host: String, path: String) -> AppResult<Vec<Entry>> {
     paths::validate_host(&host)?;
     paths::validate_root(&path)?;
@@ -205,6 +215,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let status_sink: StatusSink = Arc::new(move |status| {
@@ -229,6 +240,7 @@ pub fn run() {
             load_config,
             save_config,
             list_ssh_hosts,
+            home_dir,
             list_fonts,
             list_remote_dir,
             list_dir,

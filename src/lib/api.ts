@@ -6,6 +6,7 @@ export const api = {
   loadConfig: () => invoke<{ config: Config; warning: string | null }>('load_config'),
   saveConfig: (config: Config) => invoke<void>('save_config', { config }),
   listSshHosts: () => invoke<string[]>('list_ssh_hosts'),
+  homeDir: (host: string) => invoke<string>('home_dir', { host }),
   listFonts: () => invoke<FontFamily[]>('list_fonts'),
   listRemoteDir: (host: string, path: string) => invoke<Entry[]>('list_remote_dir', { host, path }),
   listDir: (projectId: string, rel: string) => invoke<Entry[]>('list_dir', { projectId, rel }),

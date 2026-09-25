@@ -34,6 +34,10 @@ pub struct FileContent {
     pub truncated: bool,
 }
 
+pub fn home_dir_cmd() -> &'static str {
+    r#"printf %s "$HOME""#
+}
+
 pub fn list_dir_cmd(abs: &str) -> String {
     format!(r"find {} -mindepth 1 -maxdepth 1 -printf '%y%Y\t%s\t%T@\t%f\0'", sq(abs))
 }
@@ -127,6 +131,11 @@ pub fn filter_excluded(paths: Vec<String>, excludes: &[String]) -> Vec<String> {
     paths.into_iter().filter(|p| !p.split('/').any(|seg| excludes.iter().any(|n| n == seg))).collect()
 }
 
+pub async fn home_dir(pool: &SshPool, host: &str) -> AppResult<String> {
+    let out = pool.run_ok(host, home_dir_cmd()).await?;
+    Ok(String::from_utf8_lossy(&out).into_owned())
+}
+
 pub async fn list_dir(pool: &SshPool, host: &str, abs: &str) -> AppResult<Vec<Entry>> {
     let out = pool.run_ok(host, &list_dir_cmd(abs)).await?;
     Ok(parse_list_dir(&out))
@@ -150,6 +159,11 @@ pub async fn list_files(pool: &SshPool, host: &str, abs: &str, excludes: &[Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn home_dir_cmd_prints_home_without_newline() {
+        assert_eq!(home_dir_cmd(), r#"printf %s "$HOME""#);
+    }
 
     #[test]
     fn list_dir_cmd_quotes_path_and_follows_symlink_types() {

@@ -189,15 +189,25 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .icon-btn:hover { background: none; color: var(--fg); }
 .icon-btn.on { color: var(--accent); }
 .section-title .icon-btn { margin: -4px -4px -4px 0; }
-.settings .field { display: flex; flex-direction: column; gap: 4px; }
-.settings .field-label { font-size: .92rem; color: var(--muted); }
+.modal .field { display: flex; flex-direction: column; gap: 4px; }
+.modal .field-label { font-size: .92rem; color: var(--muted); }
 .settings textarea { font-family: var(--font-code, monospace); resize: vertical; }
-.settings .field-row { display: flex; justify-content: space-between; align-items: baseline; }
-.settings .field-hint { font-size: .85rem; color: var(--muted); }
+.modal .field-row { display: flex; justify-content: space-between; align-items: baseline; }
+.modal .field-hint { font-size: .85rem; color: var(--muted); }
+.path-row { display: flex; gap: 8px; }
+.path-row > button { padding: 4px 12px; background: var(--bg); border-color: var(--border); }
+.path-row > button:hover { background: var(--bg-hover); }
+.path-input { position: relative; flex: 1; min-width: 0; }
+.path-input input { width: 100%; font-family: var(--font-code, monospace); }
+.path-suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 1; max-height: 220px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--overlay-shadow); color: var(--fg); font-size: .92rem; }
+.path-suggestions li { padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-code, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.path-suggestions li.selected { background: var(--bg-active); }
+.path-suggestions li.muted { cursor: default; font-family: inherit; }
 .link-btn { background: none; border: none; padding: 0; font: inherit; font-size: .92rem; color: var(--accent); cursor: pointer; }
 .link-btn:hover { background: none; text-decoration: underline; }
 /* Pill segmented control: a track with the selected option raised in the accent colour. */
 .segmented { display: flex; gap: 2px; padding: 2px; background: var(--bg-window); border-radius: 8px; }
 .segmented button { flex: 1; background: none; border: none; padding: 3px 8px; border-radius: var(--radius-sm); }
 .segmented button:hover { background: var(--bg-hover); }
+.segmented button:disabled { opacity: .5; cursor: default; background: none; }
 .segmented button.selected { background: var(--accent); color: var(--on-accent); }

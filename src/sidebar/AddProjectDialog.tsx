@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { api, errorMessage } from '../lib/api';
 import { addProject, containers, findProject, newId, type GroupTarget } from '../lib/configOps';
 import { basename } from '../lib/paths';
-import { LOCAL_HOST, isLocal } from '../lib/project';
+import { contractHome, expandHome, loadLastHost, saveLastHost } from '../lib/pathInput';
+import { LOCAL_HOST } from '../lib/project';
 import { useStore } from '../store';
+import { PathInput } from './PathInput';
 
 const NEW_GROUP = '__new';
+const START_PATH = '~/';
 
 function trimPath(p: string): string {
   return p.length > 1 ? p.replace(/\/+$/, '') : p;
@@ -13,70 +17,83 @@ function trimPath(p: string): string {
 
 export function AddProjectDialog({ onClose }: { onClose: () => void }) {
   const config = useStore((s) => s.config);
+  const lastHost = loadLastHost();
   const [hosts, setHosts] = useState<string[]>([]);
-  const [host, setHost] = useState('');
-  const [path, setPath] = useState('');
+  const [remote, setRemote] = useState(!!lastHost && lastHost !== LOCAL_HOST);
+  const [sshHost, setSshHost] = useState(lastHost && lastHost !== LOCAL_HOST ? lastHost : '');
+  const [home, setHome] = useState<string | null>(null);
+  const [path, setPath] = useState(START_PATH);
   const [name, setName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
   const [groupId, setGroupId] = useState(config.groups[0]?.id ?? NEW_GROUP);
   const [newGroup, setNewGroup] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const host = remote ? sshHost : LOCAL_HOST;
 
   useEffect(() => {
     api
       .listSshHosts()
       .then((list) => {
         setHosts(list);
-        setHost((h) => h || list[0] || LOCAL_HOST);
+        // The remembered host may have left ~/.ssh/config since.
+        setSshHost((h) => (list.includes(h) ? h : list[0] ?? ''));
+        if (!list.length) setRemote(false);
       })
-      .catch(() => {});
+      .catch(() => setRemote(false));
   }, []);
 
   useEffect(() => {
-    if (!host || !path.startsWith('/')) {
-      setSuggestions([]);
-      return;
-    }
-    const slash = path.lastIndexOf('/');
-    const dir = path.slice(0, slash) || '/';
-    const prefix = path.slice(slash + 1);
-    const timer = setTimeout(() => {
-      api
-        .listRemoteDir(host, dir)
-        .then((entries) =>
-          setSuggestions(
-            entries
-              .filter((e) => e.kind === 'dir' && e.name.startsWith(prefix))
-              .slice(0, 20)
-              .map((e) => `${dir === '/' ? '' : dir}/${e.name}`),
-          ),
-        )
-        .catch(() => setSuggestions([]));
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [host, path]);
+    setHome(null);
+    if (!host) return;
+    let cancelled = false;
+    api
+      .homeDir(host)
+      .then((h) => !cancelled && setHome(h))
+      .catch((err) => !cancelled && setError(`Could not reach ${host}: ${errorMessage(err)}`));
+    return () => {
+      cancelled = true;
+    };
+  }, [host]);
 
-  const effectiveName = nameTouched ? name : basename(trimPath(path));
+  // A path belongs to one machine, so a new host starts back at its home folder.
+  function switchHost(update: () => void) {
+    update();
+    setPath(START_PATH);
+    setError(null);
+  }
+
+  async function browse() {
+    const picked = await openDialog({ directory: true, defaultPath: expandHome(path.trim(), home) || undefined }).catch(() => null);
+    if (typeof picked === 'string') setPath(contractHome(picked, home));
+  }
+
+  const expanded = trimPath(expandHome(path.trim(), home));
+  // Until a folder is chosen, leave the name blank rather than naming it after the home folder.
+  const effectiveName = nameTouched ? name : path.trim() === START_PATH ? '' : basename(expanded);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const cleanPath = trimPath(path.trim());
-    if (!host.trim() || !cleanPath.startsWith('/')) {
-      setError('Host and an absolute path are required');
+    const cleanPath = expanded;
+    if (!host) {
+      setError('Choose an SSH host');
+      return;
+    }
+    if (!cleanPath.startsWith('/')) {
+      setError(cleanPath.startsWith('~') ? 'Home folder is still loading, try again' : 'Enter an absolute path, or one starting with ~');
       return;
     }
     setBusy(true);
     try {
-      await api.listRemoteDir(host.trim(), cleanPath);
+      await api.listRemoteDir(host, cleanPath);
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
       return;
     }
-    const project = { id: newId(), name: effectiveName.trim() || cleanPath, host: host.trim(), path: cleanPath };
+    const project = { id: newId(), name: effectiveName.trim() || basename(cleanPath) || cleanPath, host, path: cleanPath };
     const target: GroupTarget = groupId === NEW_GROUP ? { newGroup: newGroup.trim() || 'Default' } : { groupId };
     await useStore.getState().updateConfig((c) => addProject(c, target, project));
     // updateConfig resolves even when the save fails, so confirm persistence before closing.
@@ -85,6 +102,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
       setBusy(false);
       return;
     }
+    saveLastHost(host);
     useStore.getState().selectProject(project.id);
     onClose();
   }
@@ -93,20 +111,41 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
     <div className="modal-backdrop" onClick={onClose}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
         <h3>Add project</h3>
-        <label>
-          Host (from ~/.ssh/config, or “{LOCAL_HOST}” for this Mac)
-          <input list="remora-ssh-hosts" value={host} onChange={(e) => setHost(e.target.value)} autoFocus />
-        </label>
-        <datalist id="remora-ssh-hosts">
-          {[LOCAL_HOST, ...hosts.filter((h) => h !== LOCAL_HOST)].map((h) => <option key={h} value={h} />)}
-        </datalist>
-        <label>
-          Path
-          <input list="remora-path-suggestions" value={path} onChange={(e) => setPath(e.target.value)} placeholder={isLocal({ host: host.trim() }) ? '/Users/you/project' : '/home/you/project'} />
-        </label>
-        <datalist id="remora-path-suggestions">
-          {suggestions.map((s) => <option key={s} value={s} />)}
-        </datalist>
+        <div className="field">
+          <span className="field-label">Location</span>
+          <div className="segmented" role="radiogroup" aria-label="Location">
+            <button type="button" role="radio" aria-checked={!remote} className={remote ? '' : 'selected'} onClick={() => remote && switchHost(() => setRemote(false))}>
+              This Mac
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={remote}
+              className={remote ? 'selected' : ''}
+              disabled={!hosts.length}
+              title={hosts.length ? undefined : 'No hosts found in ~/.ssh/config'}
+              onClick={() => !remote && switchHost(() => setRemote(true))}
+            >
+              SSH host
+            </button>
+          </div>
+        </div>
+        {remote && (
+          <label>
+            Host
+            <select value={sshHost} onChange={(e) => switchHost(() => setSshHost(e.target.value))}>
+              {hosts.map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </label>
+        )}
+        <div className="field">
+          <span className="field-label">Path</span>
+          <div className="path-row">
+            <PathInput key={host} host={host} home={home} value={path} onChange={setPath} autoFocus placeholder={remote ? '~/project or /srv/project' : '~/project'} />
+            {!remote && <button type="button" onClick={() => void browse()}>Browse…</button>}
+          </div>
+          <span className="field-hint">↑↓ to pick a folder, Tab to open it{expanded.startsWith('/') && expanded !== trimPath(path.trim()) ? ` · ${expanded}` : ''}</span>
+        </div>
         <label>
           Name
           <input value={effectiveName} onChange={(e) => { setNameTouched(true); setName(e.target.value); }} />
