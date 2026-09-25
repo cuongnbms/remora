@@ -127,7 +127,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         {error && <p className="error">{error}</p>}
         <div className="modal-actions">
           <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" disabled={busy}>{busy ? 'Checking…' : 'Add'}</button>
+          <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Add'}</button>
         </div>
       </form>
     </div>

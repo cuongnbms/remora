@@ -117,7 +117,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="modal-actions">
           <button type="button" onClick={() => void updateSettings(DEFAULT_SETTINGS)}>Reset to defaults</button>
-          <button type="button" onClick={onClose}>Done</button>
+          <button type="button" className="btn-primary" onClick={onClose}>Done</button>
         </div>
       </div>
     </div>

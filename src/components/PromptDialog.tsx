@@ -21,7 +21,7 @@ export function PromptDialog({ title, initial, onSubmit, onClose }: PromptState 
         <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onClose()} />
         <div className="modal-actions">
           <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit">Save</button>
+          <button type="submit" className="btn-primary">Save</button>
         </div>
       </form>
     </div>
