@@ -170,7 +170,8 @@ fn host_statuses(state: State<'_, AppState>) -> Vec<HostStatus> {
     state.pool.statuses()
 }
 
-/// A minimal menu: no "Close Window" so ⌘W reaches the webview (close tab), but keep Copy/Select All.
+/// A minimal menu: no "Close Window" so ⌘W reaches the webview (close tab). The Edit items must
+/// stay: on macOS the webview only receives ⌘Z/⌘X/⌘C/⌘V/⌘A through these native menu entries.
 fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let app_menu = Submenu::with_items(
         app,
@@ -187,7 +188,15 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         app,
         "Edit",
         true,
-        &[&PredefinedMenuItem::copy(app, None)?, &PredefinedMenuItem::select_all(app, None)?],
+        &[
+            &PredefinedMenuItem::undo(app, None)?,
+            &PredefinedMenuItem::redo(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::cut(app, None)?,
+            &PredefinedMenuItem::copy(app, None)?,
+            &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
+        ],
     )?;
     Menu::with_items(app, &[&app_menu, &edit_menu])
 }
