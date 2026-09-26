@@ -2,6 +2,8 @@
 
 A small desktop viewer for projects on remote dev boxes and on this Mac. It shows projects in a sidebar, renders markdown (GFM, mermaid, TOC), highlights code, and reloads automatically when an agent writes a file. You can drop files from Finder onto the file tree to upload them into a project, and right-click a file or folder to download it; nothing on the host is ever overwritten.
 
+![Remora showing a markdown plan with TOC and a mermaid diagram from a remote project](screenshot.jpg)
+
 ## Requirements
 
 - macOS, Rust ≥ 1.80, Node ≥ 20, pnpm.
