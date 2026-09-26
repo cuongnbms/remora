@@ -191,3 +191,36 @@ export const ArrowDownIcon = () => (
     <path d="m6 9 6 6 6-6" />
   </Svg>
 );
+
+export const SidebarLeftIcon = () => (
+  <Svg name="sidebar-left" size={16}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+  </Svg>
+);
+
+export const SidebarRightIcon = () => (
+  <Svg name="sidebar-right" size={16}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M15 4v16" />
+  </Svg>
+);
+
+export const ArrowLeftIcon = () => (
+  <Svg name="arrow-left" size={16}>
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </Svg>
+);
+
+export const ArrowRightIcon = () => (
+  <Svg name="arrow-right" size={16}>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </Svg>
+);
+
+export const SearchIcon = () => (
+  <Svg name="search">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-4-4" />
+  </Svg>
+);

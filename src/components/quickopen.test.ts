@@ -56,7 +56,7 @@ beforeEach(() => {
     ready: true,
     config: { version: 1, groups: [], settings: DEFAULT_SETTINGS },
     activeProjectId: 'p1',
-    views: { p1: { tabs: [], active: null, preview: null, files, filesGeneration: 0 } },
+    views: { p1: { tabs: [], active: null, preview: null, files, filesGeneration: 0, history: [], historyIndex: -1 } },
     hosts: {},
     lastBatch: null,
     pendingHash: null,
@@ -77,6 +77,40 @@ afterEach(() => {
 });
 
 describe('QuickOpen', () => {
+  test('an empty query lists recently opened files first, newest first', async () => {
+    useStore.setState({
+      views: {
+        p1: {
+          tabs: ['src/App.tsx', 'docs/other.md'],
+          active: 'docs/other.md',
+          preview: null,
+          files,
+          filesGeneration: 0,
+          history: ['docs/other.md', 'src/App.tsx', 'docs/other.md'],
+          historyIndex: 2,
+        },
+      },
+    });
+    await render();
+    await setQuickOpen(true);
+    expect(labels()).toEqual([
+      'other.md docsrecently opened',
+      'App.tsx srcrecently opened',
+      'architecture-current.md docs',
+    ]);
+
+    await type('arch');
+    expect(labels()).toEqual(['architecture-current.md docs']);
+  });
+
+  test('open tabs count as recent even with no history yet', async () => {
+    useStore.setState({ views: { p1: { tabs: ['src/App.tsx'], active: null, preview: null, files, filesGeneration: 0, history: [], historyIndex: -1 } } });
+    await render();
+    await setQuickOpen(true);
+    expect(labels()[0]).toBe('App.tsx srcrecently opened');
+    expect(labels()).toHaveLength(3);
+  });
+
   test('renders nothing while closed or without an active project', async () => {
     await render();
     expect(container.querySelector('.modal-backdrop')).toBeNull();
@@ -168,7 +202,7 @@ describe('QuickOpen', () => {
 
   test('shows a loading row until the file list arrives', async () => {
     await act(async () => {
-      useStore.setState({ views: { p1: { tabs: [], active: null, preview: null, files: null, filesGeneration: 0 } } });
+      useStore.setState({ views: { p1: { tabs: [], active: null, preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 } } });
       await flush();
     });
     await render();

@@ -10,6 +10,14 @@ export function useShortcuts(handlers: Handlers): void {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // VS Code's macOS keys for Go Back / Go Forward.
+      if (e.ctrlKey && !e.metaKey && !e.altKey && e.code === 'Minus') {
+        const s = useStore.getState();
+        if (e.shiftKey) s.goForward();
+        else s.goBack();
+        e.preventDefault();
+        return;
+      }
       if (!e.metaKey) return;
       const s = useStore.getState();
       const active = s.activeProjectId ? s.views[s.activeProjectId]?.active : null;
@@ -32,7 +40,19 @@ export function useShortcuts(handlers: Handlers): void {
       } else handled = false;
       if (handled) e.preventDefault();
     };
+    // Mouse buttons 4 and 5 (reported as 3 and 4) are Back and Forward, as in VS Code and browsers.
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      const s = useStore.getState();
+      if (e.button === 3) s.goBack();
+      else s.goForward();
+      e.preventDefault();
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('mouseup', onMouse);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mouseup', onMouse);
+    };
   }, []);
 }

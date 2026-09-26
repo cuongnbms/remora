@@ -164,7 +164,7 @@ describe('Tabs', () => {
 
   test('closes a tab from its close button without activating it', async () => {
     selectProject();
-    useStore.setState({ views: { p1: { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null, files: null, filesGeneration: 0 } } });
+    useStore.setState({ views: { p1: { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 } } });
     await render(createElement(Tabs, { tabs: ['docs/a.md', 'b.ts'], active: 'b.ts', preview: null }));
 
     await click(container.querySelectorAll('.tab')[0].querySelector('.tab-close')!);
@@ -175,7 +175,7 @@ describe('Tabs', () => {
 
   test('italicizes the preview tab and pins it on double-click', async () => {
     selectProject();
-    useStore.setState({ views: { p1: { tabs: ['a.md', 'b.ts'], active: 'b.ts', preview: 'b.ts', files: null, filesGeneration: 0 } } });
+    useStore.setState({ views: { p1: { tabs: ['a.md', 'b.ts'], active: 'b.ts', preview: 'b.ts', files: null, filesGeneration: 0, history: [], historyIndex: -1 } } });
     await render(createElement(Tabs, { tabs: ['a.md', 'b.ts'], active: 'b.ts', preview: 'b.ts' }));
 
     const tab = container.querySelectorAll<HTMLElement>('.tab')[1];
@@ -189,7 +189,7 @@ describe('Tabs', () => {
 
   test('closes a tab on middle click', async () => {
     selectProject();
-    useStore.setState({ views: { p1: { tabs: ['a.md', 'b.ts'], active: 'a.md', preview: null, files: null, filesGeneration: 0 } } });
+    useStore.setState({ views: { p1: { tabs: ['a.md', 'b.ts'], active: 'a.md', preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 } } });
     await render(createElement(Tabs, { tabs: ['a.md', 'b.ts'], active: 'a.md', preview: null }));
 
     await act(async () => {

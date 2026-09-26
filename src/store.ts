@@ -11,6 +11,9 @@ export type ProjectView = {
   preview: string | null;
   files: string[] | null;
   filesGeneration: number;
+  /** Files this project has shown, oldest first, for back/forward; not persisted. */
+  history: string[];
+  historyIndex: number;
 };
 export type ChangeBatch = { projectId: string; changes: Change[]; seq: number };
 /** A find-in-file command from a shortcut; `seq` makes a repeated command a new value. */
@@ -22,7 +25,15 @@ export type ToastData = { text: string; action?: { label: string; run: () => voi
 /** Stable empty array for selectors (a fresh [] each render would loop zustand). */
 export const EMPTY_LIST: never[] = [];
 
-const emptyView = (): ProjectView => ({ tabs: [], active: null, preview: null, files: null, filesGeneration: 0 });
+const emptyView = (): ProjectView => ({ tabs: [], active: null, preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 });
+const HISTORY_LIMIT = 50;
+
+/** Records a newly active file, dropping any forward entries like a browser does. */
+function recordVisit(v: ProjectView): ProjectView {
+  if (!v.active || v.history[v.historyIndex] === v.active) return v;
+  const history = [...v.history.slice(0, v.historyIndex + 1), v.active].slice(-HISTORY_LIMIT);
+  return { ...v, history, historyIndex: history.length - 1 };
+}
 
 type UiSnapshot = { activeProjectId: string | null; views: Record<string, { tabs: string[]; active: string | null; preview?: string | null }> };
 const UI_KEY = 'remora.ui';
@@ -60,6 +71,8 @@ type State = {
   closeTabs(scope: 'all' | 'others' | 'right', path: string): void;
   activateTab(path: string): void;
   cycleTab(dir: 1 | -1): void;
+  goBack(): void;
+  goForward(): void;
   applyChanges(projectId: string, changes: Change[]): void;
   setFiles(projectId: string, files: string[] | null, generation?: number): void;
   setHost(status: HostStatus): void;
@@ -75,9 +88,23 @@ type State = {
 export const useStore = create<State>((set, get) => {
   const patchView = (projectId: string, fn: (v: ProjectView) => ProjectView) =>
     set((s) => ({ views: { ...s.views, [projectId]: fn(s.views[projectId] ?? emptyView()) } }));
+  // Every tab action goes through here, so each change of active file lands in the history.
   const patchActive = (fn: (v: ProjectView) => ProjectView) => {
     const pid = get().activeProjectId;
-    if (pid) patchView(pid, fn);
+    if (pid) patchView(pid, (v) => recordVisit(fn(v)));
+  };
+  const navigate = (dir: 1 | -1) => {
+    const pid = get().activeProjectId;
+    if (!pid || !get().views[pid]) return;
+    patchView(pid, (v) => {
+      const historyIndex = v.historyIndex + dir;
+      const path = v.history[historyIndex];
+      if (path === undefined) return v;
+      // A file whose tab was closed since comes back as a new tab at the end.
+      const tabs = v.tabs.includes(path) ? v.tabs : [...v.tabs, path];
+      return { ...v, tabs, active: path, historyIndex };
+    });
+    set({ pendingHash: null });
   };
   // Config saves are serialized: each queued task runs `fn` against the config the
   // previous task committed, so overlapping edits compose instead of clobbering.
@@ -102,7 +129,7 @@ export const useStore = create<State>((set, get) => {
       const ui = readUi();
       const views: Record<string, ProjectView> = {};
       for (const [id, v] of Object.entries(ui?.views ?? {})) {
-        if (findProject(config, id)) views[id] = { ...emptyView(), tabs: v.tabs, active: v.active, preview: v.preview && v.tabs.includes(v.preview) ? v.preview : null };
+        if (findProject(config, id)) views[id] = recordVisit({ ...emptyView(), tabs: v.tabs, active: v.active, preview: v.preview && v.tabs.includes(v.preview) ? v.preview : null });
       }
       const active = ui?.activeProjectId && findProject(config, ui.activeProjectId) ? ui.activeProjectId : null;
       set({ ready: true, config, views, activeProjectId: active, toast: warning });
@@ -198,6 +225,14 @@ export const useStore = create<State>((set, get) => {
         const active = v.tabs[(i + dir + v.tabs.length) % v.tabs.length];
         return { ...v, active };
       });
+    },
+
+    goBack() {
+      navigate(-1);
+    },
+
+    goForward() {
+      navigate(1);
     },
 
     applyChanges(projectId, changes) {

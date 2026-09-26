@@ -64,7 +64,7 @@ beforeEach(() => {
     ready: true,
     config,
     activeProjectId: 'p1',
-    views: { p1: { tabs: ['a.md', 'b.md'], active: 'a.md', preview: null, files: null, filesGeneration: 0 } },
+    views: { p1: { tabs: ['a.md', 'b.md'], active: 'a.md', preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 } },
     hosts: {},
     lastBatch: null,
     pendingHash: null,
@@ -86,6 +86,37 @@ afterEach(() => {
 });
 
 describe('useShortcuts', () => {
+  test('the mouse back and forward buttons move through history', async () => {
+    const goBack = vi.fn();
+    const goForward = vi.fn();
+    useStore.setState({ goBack, goForward });
+    await render({ toggleLeft: left, toggleRight: right });
+    const mouse = (button: number) => {
+      const event = new MouseEvent('mouseup', { button, bubbles: true, cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(mouse(3)).toBe(true);
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(mouse(4)).toBe(true);
+    expect(goForward).toHaveBeenCalledTimes(1);
+    expect(mouse(0)).toBe(false);
+    expect(goBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('ctrl+minus goes back and ctrl+shift+minus goes forward', async () => {
+    const goBack = vi.fn();
+    const goForward = vi.fn();
+    useStore.setState({ goBack, goForward });
+    await render({ toggleLeft: left, toggleRight: right });
+    await press({ code: 'Minus', metaKey: false, ctrlKey: true });
+    expect(goBack).toHaveBeenCalledTimes(1);
+    await press({ code: 'Minus', metaKey: false, ctrlKey: true, shiftKey: true });
+    expect(goForward).toHaveBeenCalledTimes(1);
+    expect(prevented({ code: 'Minus', metaKey: false, ctrlKey: true })).toBe(true);
+    expect(prevented({ code: 'Minus', metaKey: false })).toBe(false);
+  });
+
   test('cmd+b toggles the left panel and cmd+alt+b toggles the right panel', async () => {
     await render({ toggleLeft: left, toggleRight: right });
     await press({ code: 'KeyB' });
@@ -128,7 +159,7 @@ describe('useShortcuts', () => {
     await press({ code: 'KeyW' });
     expect(useStore.getState().views.p1).toMatchObject({ tabs: ['b.md'], active: 'b.md' });
 
-    useStore.setState({ views: { p1: { tabs: [], active: null, preview: null, files: null, filesGeneration: 0 } } });
+    useStore.setState({ views: { p1: { tabs: [], active: null, preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 } } });
     await press({ code: 'KeyW' });
     expect(useStore.getState().views.p1.tabs).toEqual([]);
   });

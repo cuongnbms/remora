@@ -1,15 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fuzzyFilter } from '../lib/fuzzy';
 import { basename, dirname } from '../lib/paths';
-import { useStore } from '../store';
+import { EMPTY_LIST, useStore } from '../store';
+
+/** Files viewed most recently first (history, then open tabs), limited to those that still exist. */
+export function recentFiles(history: string[], tabs: string[], files: string[] | null): string[] {
+  const existing = files ? new Set(files) : null;
+  const seen = new Set<string>();
+  for (const p of [...history].reverse().concat(tabs)) if (!existing || existing.has(p)) seen.add(p);
+  return [...seen];
+}
 
 export function QuickOpen() {
   const open = useStore((s) => s.quickOpen);
   const projectId = useStore((s) => s.activeProjectId);
   const files = useStore((s) => (s.activeProjectId ? (s.views[s.activeProjectId]?.files ?? null) : null));
+  const history = useStore((s) => (s.activeProjectId ? s.views[s.activeProjectId]?.history : undefined) ?? EMPTY_LIST);
+  const tabs = useStore((s) => (s.activeProjectId ? s.views[s.activeProjectId]?.tabs : undefined) ?? EMPTY_LIST);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
-  const results = useMemo(() => (files ? fuzzyFilter(query, files, 50) : []), [query, files]);
+  // Like VS Code: with nothing typed, recently opened files come first.
+  const recent = useMemo(() => (query ? [] : recentFiles(history, tabs, files)), [query, history, tabs, files]);
+  const results = useMemo(() => {
+    if (!files) return [];
+    if (query) return fuzzyFilter(query, files, 50);
+    const isRecent = new Set(recent);
+    return recent.concat(files.filter((p) => !isRecent.has(p))).slice(0, 50);
+  }, [query, files, recent]);
 
   useEffect(() => setSelected(0), [query]);
   useEffect(() => {
@@ -52,6 +69,7 @@ export function QuickOpen() {
             results.map((p, i) => (
               <li key={p} className={i === selected ? 'selected' : ''} onMouseEnter={() => setSelected(i)} onClick={() => choose(p)}>
                 <span>{basename(p)}</span> <span className="muted small">{dirname(p)}</span>
+                {i < recent.length && <span className="muted small recent-tag">recently opened</span>}
               </li>
             ))
           )}

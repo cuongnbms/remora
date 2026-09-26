@@ -70,7 +70,7 @@ describe('init', () => {
     expect(s.ready).toBe(true);
     expect(s.activeProjectId).toBeNull();
     expect(Object.keys(s.views)).toEqual(['p1']);
-    expect(s.views.p1).toEqual({ tabs: ['a.md'], active: 'a.md', preview: null, files: null, filesGeneration: 0 });
+    expect(s.views.p1).toEqual({ tabs: ['a.md'], active: 'a.md', preview: null, files: null, filesGeneration: 0, history: ['a.md'], historyIndex: 0 });
     expect(s.toast).toBe('warning');
   });
 
@@ -223,13 +223,81 @@ describe('tabs', () => {
 
   test('cycleTab is a no-op with no tabs', () => {
     useStore.getState().cycleTab(1);
-    expect(useStore.getState().views.p1).toEqual({ tabs: [], active: null, preview: null, files: null, filesGeneration: 0 });
+    expect(useStore.getState().views.p1).toEqual({ tabs: [], active: null, preview: null, files: null, filesGeneration: 0, history: [], historyIndex: -1 });
   });
 
   test('tab actions on no active project do not throw', () => {
     useStore.getState().selectProject(null);
     expect(() => useStore.getState().openFile('a.md')).not.toThrow();
     expect(useStore.getState().views.p1).toBeUndefined();
+  });
+});
+
+describe('history', () => {
+  beforeEach(() => {
+    useStore.getState().init(config, null);
+    useStore.getState().selectProject('p1');
+  });
+  const view = () => useStore.getState().views.p1;
+
+  test('records each file that becomes active, once per visit', () => {
+    const s = useStore.getState();
+    s.openFile('a.md', undefined, { pin: true });
+    s.openFile('b.md', undefined, { pin: true });
+    s.activateTab('b.md');
+    s.cycleTab(1);
+    expect(view()).toMatchObject({ history: ['a.md', 'b.md', 'a.md'], historyIndex: 2 });
+  });
+
+  test('goBack and goForward move through history without recording', () => {
+    const s = useStore.getState();
+    s.openFile('a.md', undefined, { pin: true });
+    s.openFile('b.md', undefined, { pin: true });
+    s.openFile('c.md', undefined, { pin: true });
+
+    useStore.getState().goBack();
+    useStore.getState().goBack();
+    expect(view()).toMatchObject({ active: 'a.md', historyIndex: 0 });
+    useStore.getState().goBack();
+    expect(view()).toMatchObject({ active: 'a.md', historyIndex: 0 });
+
+    useStore.getState().goForward();
+    expect(view()).toMatchObject({ active: 'b.md', historyIndex: 1, history: ['a.md', 'b.md', 'c.md'] });
+  });
+
+  test('opening a file after going back drops the forward entries', () => {
+    const s = useStore.getState();
+    s.openFile('a.md', undefined, { pin: true });
+    s.openFile('b.md', undefined, { pin: true });
+    useStore.getState().goBack();
+    useStore.getState().openFile('c.md', undefined, { pin: true });
+    expect(view()).toMatchObject({ history: ['a.md', 'c.md'], historyIndex: 1 });
+    useStore.getState().goForward();
+    expect(view().active).toBe('c.md');
+  });
+
+  test('going back to a closed file reopens its tab', () => {
+    const s = useStore.getState();
+    s.openFile('a.md', undefined, { pin: true });
+    s.openFile('b.md', undefined, { pin: true });
+    useStore.getState().closeTab('a.md');
+    useStore.getState().goBack();
+    expect(view()).toMatchObject({ active: 'a.md', tabs: ['b.md', 'a.md'] });
+  });
+
+  test('keeps at most 50 entries', () => {
+    for (let i = 0; i < 60; i++) useStore.getState().openFile(`f${i}.md`);
+    expect(view().history).toHaveLength(50);
+    expect(view().history[0]).toBe('f10.md');
+    expect(view().historyIndex).toBe(49);
+  });
+
+  test('history is per project', () => {
+    useStore.getState().openFile('a.md');
+    useStore.getState().selectProject('p2');
+    useStore.getState().goBack();
+    expect(useStore.getState().views.p1.history).toEqual(['a.md']);
+    expect(useStore.getState().views.p2).toBeUndefined();
   });
 });
 

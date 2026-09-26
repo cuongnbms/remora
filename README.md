@@ -42,9 +42,10 @@ pnpm tauri build        # produce Remora.app
 
 | Keys | Action |
 |---|---|
-| ⌘P | Go to file |
+| ⌘P | Go to file (recently opened files first) |
 | ⌘W | Close tab |
 | ⌘⇧[ / ⌘⇧] | Previous / next tab |
+| ⌃- / ⌃⇧- | Go back / forward through viewed files (also the mouse's back / forward buttons) |
 | ⌘1…9 | Switch project |
 | ⌘R | Reload current file |
 | ⌘F | Find in the open file (Enter / ⇧Enter next / previous, Esc closes) |

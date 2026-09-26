@@ -11,7 +11,10 @@
   },
   "app": {
     "windows": [
-      { "title": "Remora", "width": 1400, "height": 900, "minWidth": 900, "minHeight": 500 }
+      {
+        "title": "Remora", "width": 1400, "height": 900, "minWidth": 900, "minHeight": 500,
+        "titleBarStyle": "Overlay", "hiddenTitle": true, "trafficLightPosition": { "x": 14, "y": 21 }
+      }
     ],
     "security": {
       "csp": null

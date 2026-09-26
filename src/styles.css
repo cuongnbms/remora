@@ -49,7 +49,21 @@ select {
 select:disabled { opacity: .6; cursor: default; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
 ul { list-style: none; margin: 0; padding: 0; }
-.app { height: 100%; padding: var(--gap); }
+.app { height: 100%; padding: 0 var(--gap) var(--gap); display: flex; flex-direction: column; }
+.app > [data-panel-group] { flex: 1; min-height: 0; }
+/* Our own title bar, drawn under the overlaid macOS title bar; the left inset clears the traffic lights. */
+.titlebar { flex: none; height: 38px; display: flex; align-items: center; gap: 8px; padding-left: 76px; -webkit-user-select: none; user-select: none; }
+.titlebar-side { flex: 1; display: flex; align-items: center; gap: 2px; min-width: 0; }
+.titlebar-side.end { justify-content: flex-end; }
+.titlebar-app { font-weight: 600; margin-right: 8px; cursor: default; }
+.titlebar .icon-btn { width: 26px; height: 26px; border-radius: var(--radius-sm); }
+.titlebar .icon-btn:hover:not(:disabled) { background: var(--bg-hover); }
+.titlebar .icon-btn.on { color: var(--fg); }
+.titlebar .icon-btn:disabled { opacity: .35; cursor: default; }
+.titlebar-search { flex: 0 1 480px; min-width: 160px; height: 26px; display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+.titlebar-search:hover:not(:disabled) { background: var(--bg); border-color: var(--muted); color: var(--fg); }
+.titlebar-search:disabled { cursor: default; }
+.titlebar-search span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .muted { color: var(--muted); } .small { font-size: .85rem; } .pad { padding: 12px; } .error { color: var(--error); }
 /* The gap between islands is the resize handle; a hairline shows only while hovering or dragging. */
 .resize-handle { width: var(--gap); background: transparent; position: relative; }
@@ -213,8 +227,9 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .quickopen { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; width: 600px; max-height: 60vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--overlay-shadow); }
 .quickopen input { height: auto; background: transparent; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 10px 14px; font-size: 1.08rem; box-shadow: none; }
 .quickopen ul { overflow-y: auto; padding: 4px 6px 6px; }
-.quickopen li { padding: 5px 10px; cursor: pointer; border-radius: var(--radius-sm); }
+.quickopen li { display: flex; align-items: baseline; gap: 4px; padding: 5px 10px; cursor: pointer; border-radius: var(--radius-sm); }
 .quickopen li.selected { background: var(--bg-active); }
+.quickopen .recent-tag { margin-left: auto; padding-left: 12px; white-space: nowrap; }
 .context-menu { position: fixed; z-index: 20; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 4px; min-width: 180px; box-shadow: var(--overlay-shadow); }
 .context-menu li { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 8px; cursor: pointer; border-radius: var(--radius-sm); }
 /* Fixed-width slot keeps labels aligned whether or not an item has an icon. */

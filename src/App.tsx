@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels';
 import { Toast } from './components/Toast';
 import { QuickOpen } from './components/QuickOpen';
+import { TitleBar } from './components/TitleBar';
 import { FilePanel } from './filepanel/FilePanel';
 import { useBackendEvents } from './hooks/useBackendEvents';
 import { useShortcuts } from './hooks/useShortcuts';
@@ -33,9 +34,13 @@ export default function App() {
   const left = useRef<ImperativePanelHandle>(null);
   const right = useRef<ImperativePanelHandle>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const toggleLeft = () => togglePanel(left);
+  const toggleRight = () => togglePanel(right);
 
   useBackendEvents();
-  useShortcuts({ toggleLeft: () => togglePanel(left), toggleRight: () => togglePanel(right) });
+  useShortcuts({ toggleLeft, toggleRight });
 
   useEffect(() => {
     api
@@ -67,8 +72,9 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="app loading muted pad">
-        {loadError ?? 'Loading…'}
+      <div className="app">
+        <div className="titlebar" data-tauri-drag-region />
+        <div className="muted pad">{loadError ?? 'Loading…'}</div>
         <Toast />
       </div>
     );
@@ -76,8 +82,9 @@ export default function App() {
 
   return (
     <div className="app">
+      <TitleBar leftOpen={leftOpen} rightOpen={rightOpen} toggleLeft={toggleLeft} toggleRight={toggleRight} />
       <PanelGroup direction="horizontal" autoSaveId="remora-layout">
-        <Panel ref={left} order={1} defaultSize={18} minSize={12} collapsible>
+        <Panel ref={left} order={1} defaultSize={18} minSize={12} collapsible onCollapse={() => setLeftOpen(false)} onExpand={() => setLeftOpen(true)}>
           <ProjectSidebar />
         </Panel>
         <PanelResizeHandle className="resize-handle" />
@@ -85,7 +92,7 @@ export default function App() {
           <Viewer />
         </Panel>
         <PanelResizeHandle className="resize-handle" />
-        <Panel ref={right} order={3} defaultSize={20} minSize={12} collapsible>
+        <Panel ref={right} order={3} defaultSize={20} minSize={12} collapsible onCollapse={() => setRightOpen(false)} onExpand={() => setRightOpen(true)}>
           <FilePanel />
         </Panel>
       </PanelGroup>
