@@ -13,6 +13,8 @@ export type ProjectView = {
   filesGeneration: number;
 };
 export type ChangeBatch = { projectId: string; changes: Change[]; seq: number };
+/** A find-in-file command from a shortcut; `seq` makes a repeated command a new value. */
+export type FindRequest = { action: 'open' | 'next' | 'prev'; seq: number };
 
 /** A toast with an optional button; sticky ones stay until replaced (used while a transfer runs). */
 export type ToastData = { text: string; action?: { label: string; run: () => void }; sticky?: boolean };
@@ -46,6 +48,7 @@ type State = {
   quickOpen: boolean;
   settingsOpen: boolean;
   reloadSeq: number;
+  findRequest: FindRequest | null;
   editRequest: string | null;
   init(config: Config, warning: string | null): void;
   updateConfig(fn: (c: Config) => Config): Promise<void>;
@@ -64,6 +67,7 @@ type State = {
   setQuickOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
   requestReload(): void;
+  requestFind(action: FindRequest['action']): void;
   consumeHash(): string | null;
   requestEditProject(id: string | null): void;
 };
@@ -91,6 +95,7 @@ export const useStore = create<State>((set, get) => {
     quickOpen: false,
     settingsOpen: false,
     reloadSeq: 0,
+    findRequest: null,
     editRequest: null,
 
     init(config, warning) {
@@ -239,6 +244,10 @@ export const useStore = create<State>((set, get) => {
 
     requestReload() {
       set((s) => ({ reloadSeq: s.reloadSeq + 1 }));
+    },
+
+    requestFind(action) {
+      set((s) => ({ findRequest: { action, seq: (s.findRequest?.seq ?? 0) + 1 } }));
     },
 
     consumeHash() {

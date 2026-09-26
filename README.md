@@ -45,6 +45,8 @@ pnpm tauri build        # produce Remora.app
 | ⌘⇧[ / ⌘⇧] | Previous / next tab |
 | ⌘1…9 | Switch project |
 | ⌘R | Reload current file |
+| ⌘F | Find in the open file (Enter / ⇧Enter next / previous, Esc closes) |
+| ⌘G / ⌘⇧G | Next / previous match |
 | ⌘B / ⌘⌥B | Toggle left / right panel |
 | ⌘, | Settings (theme, fonts, font size) |
 

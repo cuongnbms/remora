@@ -179,3 +179,15 @@ export const CloseAllIcon = () => (
     <path d="m15 9-6 6M9 9l6 6" />
   </Svg>
 );
+
+export const ArrowUpIcon = () => (
+  <Svg name="arrow-up">
+    <path d="m6 15 6-6 6 6" />
+  </Svg>
+);
+
+export const ArrowDownIcon = () => (
+  <Svg name="arrow-down">
+    <path d="m6 9 6 6 6-6" />
+  </Svg>
+);

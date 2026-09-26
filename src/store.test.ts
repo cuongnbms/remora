@@ -40,6 +40,7 @@ const reset = () =>
     toast: null,
     quickOpen: false,
     reloadSeq: 0,
+    findRequest: null,
     editRequest: null,
   });
 

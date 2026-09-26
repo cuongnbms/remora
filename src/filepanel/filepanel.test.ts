@@ -86,6 +86,7 @@ beforeEach(() => {
     toast: null,
     quickOpen: false,
     reloadSeq: 0,
+    findRequest: null,
     editRequest: null,
   });
   container = document.createElement('div');

@@ -17,6 +17,8 @@ export function useShortcuts(handlers: Handlers): void {
       if (e.code === 'KeyB' && e.altKey) ref.current.toggleRight();
       else if (e.code === 'KeyB') ref.current.toggleLeft();
       else if (e.code === 'KeyP') s.setQuickOpen(true);
+      else if (e.code === 'KeyF') s.requestFind('open');
+      else if (e.code === 'KeyG') s.requestFind(e.shiftKey ? 'prev' : 'next');
       else if (e.code === 'Comma') s.setSettingsOpen(true);
       else if (e.code === 'KeyW') {
         if (active) s.closeTab(active);

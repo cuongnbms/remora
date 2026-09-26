@@ -83,6 +83,7 @@ beforeEach(() => {
     toast: null,
     quickOpen: false,
     reloadSeq: 0,
+    findRequest: null,
     editRequest: null,
   });
   container = document.createElement('div');
@@ -573,6 +574,173 @@ describe('FileView', () => {
     await apply('p1', [{ path: 'a.ts', isDir: false, removed: false }]);
     expect(container.querySelector('.banner.error')).toBeNull();
     await waitFor(() => expect(container.textContent).toContain('recovered'));
+  });
+});
+
+describe('FindBar', () => {
+  // jsdom has no layout, so ranges have no geometry.
+  const rangeRect = Range.prototype.getBoundingClientRect;
+  beforeEach(() => {
+    Range.prototype.getBoundingClientRect = () => new DOMRect();
+  });
+  afterEach(() => {
+    Range.prototype.getBoundingClientRect = rangeRect;
+  });
+
+  const findInput = () => container.querySelector<HTMLInputElement>('.find-bar input');
+  const count = () => container.querySelector('.find-count')?.textContent;
+  const find = (action: 'open' | 'next' | 'prev') =>
+    act(async () => {
+      useStore.getState().requestFind(action);
+      await flush();
+    });
+  const type = (value: string) =>
+    act(async () => {
+      const el = findInput()!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      await flush();
+    });
+  const key = (k: string, init: KeyboardEventInit = {}) =>
+    act(async () => {
+      findInput()!.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init }));
+      await flush();
+    });
+  const openCode = async (content: string) => {
+    readFile.mockResolvedValue({ content, truncated: false });
+    await render(createElement(FileView, { project, path: 'a.ts' }));
+    await waitFor(() => expect(container.querySelector('.code-view')).not.toBeNull());
+  };
+
+  test('cmd+f opens the bar and focuses its input; escape closes it', async () => {
+    await openCode('foo\n');
+    expect(container.querySelector('.find-bar')).toBeNull();
+
+    await find('open');
+    expect(document.activeElement).toBe(findInput());
+
+    await key('Escape');
+    expect(container.querySelector('.find-bar')).toBeNull();
+  });
+
+  test('counts matches and steps through them with enter, shift+enter and cmd+g, wrapping', async () => {
+    await openCode('const foo = 1;\nfoo.bar(Foo);\n');
+    await find('open');
+    expect(count()).toBe('');
+
+    await type('foo');
+    expect(count()).toBe('1/3');
+    await key('Enter');
+    expect(count()).toBe('2/3');
+    await find('next');
+    expect(count()).toBe('3/3');
+    await key('Enter');
+    expect(count()).toBe('1/3');
+    await key('Enter', { shiftKey: true });
+    expect(count()).toBe('3/3');
+    await find('prev');
+    expect(count()).toBe('2/3');
+
+    await type('nope');
+    expect(count()).toBe('No results');
+  });
+
+  test('the match case toggle narrows the matches', async () => {
+    await openCode('Foo foo FOO\n');
+    await find('open');
+    await type('foo');
+    expect(count()).toBe('1/3');
+
+    await click(button('Match case'));
+    expect(button('Match case').getAttribute('aria-pressed')).toBe('true');
+    expect(count()).toBe('1/1');
+  });
+
+  test('searches the rendered markdown text but not the contents list', async () => {
+    readFile.mockResolvedValue({ content: '# Alpha\n\nalpha beta\n', truncated: false });
+    await render(createElement(FileView, { project, path: 'a.md' }));
+    await waitFor(() => expect(container.querySelector('.toc')).not.toBeNull());
+    await find('open');
+    await type('alpha');
+    expect(count()).toBe('1/2');
+    await type('#');
+    expect(count()).toBe('No results');
+  });
+
+  test('re-runs the search when the file reloads', async () => {
+    await openCode('foo\n');
+    await find('open');
+    await type('foo');
+    expect(count()).toBe('1/1');
+
+    readFile.mockResolvedValue({ content: 'foo foo foo\n', truncated: false });
+    await act(async () => {
+      useStore.getState().requestReload();
+      await flush();
+    });
+    await waitFor(() => expect(count()).toBe('1/3'));
+  });
+
+  test('cmd+f pressed while the file loads opens the bar once it arrives, and only once', async () => {
+    let resolve!: (v: { content: string; truncated: boolean }) => void;
+    readFile.mockReturnValue(new Promise((r) => (resolve = r)));
+    await render(createElement(FileView, { project, path: 'a.ts' }));
+    await find('open');
+    expect(container.querySelector('.find-bar')).toBeNull();
+
+    await act(async () => {
+      resolve({ content: 'foo\n', truncated: false });
+      await flush();
+    });
+    expect(container.querySelector('.find-bar')).not.toBeNull();
+
+    await key('Escape');
+    readFile.mockResolvedValue({ content: 'foo foo\n', truncated: false });
+    await act(async () => {
+      useStore.getState().requestReload();
+      await flush();
+    });
+    expect(container.querySelector('.find-bar')).toBeNull();
+  });
+
+  test('a find request made before the file opened does not open the bar, nor does one on an image', async () => {
+    useStore.getState().requestFind('open');
+    await openCode('foo\n');
+    expect(container.querySelector('.find-bar')).toBeNull();
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    readImage.mockResolvedValue('data:image/png;base64,AA==');
+    await render(createElement(FileView, { project, path: 'p.png' }));
+    await waitFor(() => expect(container.querySelector('.image-view img')).not.toBeNull());
+    await find('open');
+    expect(container.querySelector('.find-bar')).toBeNull();
+  });
+
+  test('registers match highlights and clears them on close', async () => {
+    const highlights = new Map<string, Set<Range>>();
+    vi.stubGlobal('CSS', { ...CSS, highlights });
+    vi.stubGlobal('Highlight', Set);
+    try {
+      await openCode('foo bar foo\n');
+      await find('open');
+      await type('fo');
+      const match = highlights.get('find-match')!;
+      await type('foo b');
+      // The registered object is emptied and refilled, never swapped (WebKit leaves stale paint).
+      expect(highlights.get('find-match')).toBe(match);
+      expect([...match].map((r) => r.toString())).toEqual(['foo b']);
+      expect(highlights.get('find-current')?.size).toBe(1);
+
+      await type('zzz');
+      expect(match.size).toBe(0);
+      expect(highlights.get('find-current')?.size).toBe(0);
+
+      await key('Escape');
+      expect(highlights.size).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

@@ -9,6 +9,7 @@ import { CodeIcon, CopyIcon, EyeIcon, ListIcon } from '../filepanel/icons';
 import { ErrorState, useHostDown } from '../components/ErrorState';
 import { fileErrorTitle, isConnectionError } from '../lib/errors';
 import { CodeView } from './CodeView';
+import { FindBar } from './FindBar';
 import { MarkdownView } from './MarkdownView';
 
 export function FileView({ project, path }: { project: Project; path: string }) {
@@ -18,6 +19,7 @@ export function FileView({ project, path }: { project: Project; path: string }) 
   const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
   const [showToc, setShowToc] = useState(true);
   const [hasToc, setHasToc] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScroll = useRef<number | null>(null);
   const hasData = useRef(false);
@@ -25,6 +27,9 @@ export function FileView({ project, path }: { project: Project; path: string }) 
   const loadSeq = useRef(0);
   const batch = useStore((s) => s.lastBatch);
   const reloadSeq = useStore((s) => s.reloadSeq);
+  const findRequest = useStore((s) => s.findRequest);
+  // The last find request acted on; one made before this file opened (e.g. in the previous tab) is not for it.
+  const handledFindSeq = useRef(findRequest?.seq);
   const hostDown = useHostDown(project.host);
   const fullPath = absPath(project, path);
   const markdown = isMarkdown(path);
@@ -77,6 +82,15 @@ export function FileView({ project, path }: { project: Project; path: string }) 
     if (batch.changes.some((c) => c.path === path || (c.isDir && c.path === parent))) void load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batch]);
+
+  // ⌘F pressed while the file is still loading opens the bar once it arrives.
+  useEffect(() => {
+    if (findRequest?.action !== 'open' || findRequest.seq === handledFindSeq.current || !data) return;
+    handledFindSeq.current = findRequest.seq;
+    if (!image) setFindOpen(true);
+  }, [findRequest, data, image]);
+
+  const closeFind = useCallback(() => setFindOpen(false), []);
 
   const onRendered = useCallback(() => {
     if (savedScroll.current !== null && scrollRef.current) {
@@ -171,6 +185,11 @@ export function FileView({ project, path }: { project: Project; path: string }) 
         </div>
       )}
       {data?.truncated && <div className="banner warn">File is larger than 2 MB — showing the first 2 MB</div>}
+      {findOpen && data && !image && (
+        <div className="find-anchor">
+          <FindBar rootRef={scrollRef} rootKey={markdown && mode === 'rendered' ? 'rendered' : 'source'} onClose={closeFind} />
+        </div>
+      )}
       {body}
     </div>
   );

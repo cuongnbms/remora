@@ -72,6 +72,7 @@ beforeEach(() => {
     quickOpen: false,
     settingsOpen: false,
     reloadSeq: 0,
+    findRequest: null,
     editRequest: null,
   });
   container = document.createElement('div');
@@ -102,6 +103,18 @@ describe('useShortcuts', () => {
 
     await press({ code: 'KeyR' });
     expect(useStore.getState().reloadSeq).toBe(1);
+  });
+
+  test('cmd+f opens find, cmd+g and cmd+shift+g step through matches', async () => {
+    await render({ toggleLeft: left, toggleRight: right });
+    await press({ code: 'KeyF' });
+    expect(useStore.getState().findRequest).toEqual({ action: 'open', seq: 1 });
+
+    await press({ code: 'KeyG' });
+    expect(useStore.getState().findRequest).toEqual({ action: 'next', seq: 2 });
+
+    await press({ code: 'KeyG', shiftKey: true });
+    expect(useStore.getState().findRequest).toEqual({ action: 'prev', seq: 3 });
   });
 
   test('cmd+comma opens settings', async () => {
