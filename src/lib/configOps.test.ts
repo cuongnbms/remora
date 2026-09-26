@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Config } from './types';
-import { addGroup, addProject, addSubgroup, containers, findProject, flatProjects, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from './configOps';
+import { addGroup, addProject, addProjects, addSubgroup, containers, findProject, flatProjects, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from './configOps';
 import { DEFAULT_SETTINGS } from './settings';
 
 const base: Config = {
@@ -20,6 +20,15 @@ test('addProject into existing or new group', () => {
   expect(created.groups[2].name).toBe('New');
   expect(addProject(base, { newGroup: 'Work' }, p2).groups).toHaveLength(2);
   expect(() => addProject(base, { groupId: 'nope' }, p2)).toThrow();
+});
+
+test('addProjects adds all into one new group', () => {
+  const p3 = { id: 'p3', name: 'c', host: 'devbox', path: '/c' };
+  const added = addProjects(base, { newGroup: 'Batch' }, [p2, p3]);
+  expect(added.groups).toHaveLength(3);
+  expect(added.groups[2].projects).toEqual([p2, p3]);
+  expect(addProjects(base, { groupId: 'g2' }, [p2, p3]).groups[1].projects).toEqual([p2, p3]);
+  expect(addProjects(base, { groupId: 'g2' }, [])).toEqual(base);
 });
 
 test('addGroup appends an empty group, reusing a same-named one', () => {

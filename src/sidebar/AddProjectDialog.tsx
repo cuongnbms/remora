@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { api, errorMessage } from '../lib/api';
-import { addProject, containers, findProject, newId, type GroupTarget } from '../lib/configOps';
+import { addProjects, containers, findProject, flatProjects, newId, type GroupTarget } from '../lib/configOps';
 import { basename } from '../lib/paths';
 import { contractHome, expandHome, loadLastHost, saveLastHost } from '../lib/pathInput';
-import { LOCAL_HOST } from '../lib/project';
+import { LOCAL_HOST, absPath, subfolderNames } from '../lib/project';
 import { useStore } from '../store';
 import { PathInput } from './PathInput';
 
@@ -29,6 +29,11 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
   const [newGroup, setNewGroup] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // "Add each subfolder" mode: the listing of the chosen folder, and the subfolders unticked by the user.
+  const [multi, setMulti] = useState(false);
+  const [subs, setSubs] = useState<{ path: string; names: string[] } | null>(null);
+  const [subsError, setSubsError] = useState<string | null>(null);
+  const [unticked, setUnticked] = useState<Set<string>>(new Set());
 
   const host = remote ? sshHost : LOCAL_HOST;
 
@@ -70,12 +75,69 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
   }
 
   const expanded = trimPath(expandHome(path.trim(), home));
+  const atStart = path.trim() === START_PATH;
   // Until a folder is chosen, leave the name blank rather than naming it after the home folder.
-  const effectiveName = nameTouched ? name : path.trim() === START_PATH ? '' : basename(expanded);
+  const effectiveName = nameTouched ? name : atStart ? '' : basename(expanded);
+
+  useEffect(() => {
+    setSubs(null);
+    setSubsError(null);
+    setUnticked(new Set());
+    if (!multi || !host || !expanded.startsWith('/') || atStart) return;
+    let cancelled = false;
+    // Wait for typing to pause before listing, since each keystroke changes the folder.
+    const timer = setTimeout(() => {
+      api
+        .listRemoteDir(host, expanded)
+        .then((entries) => !cancelled && setSubs({ path: expanded, names: subfolderNames(entries) }))
+        .catch((err) => !cancelled && setSubsError(errorMessage(err)));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [multi, host, expanded, atStart]);
+
+  const taken = new Set(flatProjects(config).filter((p) => p.host === host).map((p) => p.path));
+  const subPath = (name: string) => absPath({ path: expanded }, name);
+  const listed = subs?.path === expanded ? subs.names : null;
+  // The untouched home folder is not a choice yet; listing it would tick every folder in home.
+  const pathChosen = expanded.startsWith('/') && !atStart;
+  const available = listed?.filter((n) => !taken.has(subPath(n))) ?? [];
+  const chosen = available.filter((n) => !unticked.has(n));
+
+  function toggleSub(name: string) {
+    setUnticked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(name)) next.add(name);
+      return next;
+    });
+  }
+
+  async function saveProjects(projects: { id: string; name: string; host: string; path: string }[]): Promise<boolean> {
+    const target: GroupTarget = groupId === NEW_GROUP ? { newGroup: newGroup.trim() || 'Default' } : { groupId };
+    await useStore.getState().updateConfig((c) => addProjects(c, target, projects));
+    // updateConfig resolves even when the save fails, so confirm persistence before closing.
+    return projects.every((p) => findProject(useStore.getState().config, p.id));
+  }
+
+  async function submitMany() {
+    if (!chosen.length) return;
+    setBusy(true);
+    const projects = chosen.map((n) => ({ id: newId(), name: n, host, path: subPath(n) }));
+    if (!(await saveProjects(projects))) {
+      setError('Could not save the config. The projects were not added.');
+      setBusy(false);
+      return;
+    }
+    saveLastHost(host);
+    onClose();
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (multi) return submitMany();
     const cleanPath = expanded;
     if (!host) {
       setError('Choose an SSH host');
@@ -94,10 +156,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     const project = { id: newId(), name: effectiveName.trim() || basename(cleanPath) || cleanPath, host, path: cleanPath };
-    const target: GroupTarget = groupId === NEW_GROUP ? { newGroup: newGroup.trim() || 'Default' } : { groupId };
-    await useStore.getState().updateConfig((c) => addProject(c, target, project));
-    // updateConfig resolves even when the save fails, so confirm persistence before closing.
-    if (!findProject(useStore.getState().config, project.id)) {
+    if (!(await saveProjects([project]))) {
       setError('Could not save the config. The project was not added.');
       setBusy(false);
       return;
@@ -146,10 +205,51 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
           </div>
           <span className="field-hint">↑↓ to pick a folder, Tab to open it{expanded.startsWith('/') && expanded !== trimPath(path.trim()) ? ` · ${expanded}` : ''}</span>
         </div>
-        <label>
-          Name
-          <input spellCheck={false} autoCapitalize="off" autoCorrect="off" value={effectiveName} onChange={(e) => { setNameTouched(true); setName(e.target.value); }} />
+        <label className="check-row">
+          <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} />
+          Add each subfolder as a project
         </label>
+        {multi && (
+          <div className="field">
+            <div className="field-row">
+              <span className="field-label">Subfolders</span>
+              {!!available.length && (
+                <button type="button" className="link-btn" onClick={() => setUnticked(chosen.length ? new Set(available) : new Set())}>
+                  {chosen.length ? 'Select none' : 'Select all'}
+                </button>
+              )}
+            </div>
+            <ul className="sub-list">
+              {subsError ? (
+                <li className="sub-empty">{subsError}</li>
+              ) : !listed ? (
+                <li className="sub-empty">{pathChosen ? 'Loading…' : 'Choose a folder'}</li>
+              ) : !listed.length ? (
+                <li className="sub-empty">No subfolders</li>
+              ) : (
+                listed.map((n) => {
+                  const added = taken.has(subPath(n));
+                  return (
+                    <li key={n}>
+                      <label className={`check-row${added ? ' disabled' : ''}`}>
+                        <input type="checkbox" disabled={added} checked={!added && !unticked.has(n)} onChange={() => toggleSub(n)} />
+                        <span className="sub-name">{n}</span>
+                        {added && <span className="field-hint">already added</span>}
+                      </label>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+            {!!listed?.length && <span className="field-hint">{chosen.length} of {available.length} selected</span>}
+          </div>
+        )}
+        {!multi && (
+          <label>
+            Name
+            <input spellCheck={false} autoCapitalize="off" autoCorrect="off" value={effectiveName} onChange={(e) => { setNameTouched(true); setName(e.target.value); }} />
+          </label>
+        )}
         <label>
           Group
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
@@ -166,7 +266,13 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         {error && <p className="error">{error}</p>}
         <div className="modal-actions">
           <button type="button" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Add'}</button>
+          {multi ? (
+            <button type="submit" className="btn-primary" disabled={busy || !chosen.length}>
+              {busy ? 'Adding…' : chosen.length > 1 ? `Add ${chosen.length} projects` : 'Add project'}
+            </button>
+          ) : (
+            <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Add'}</button>
+          )}
         </div>
       </form>
     </div>

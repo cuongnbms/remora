@@ -1,4 +1,4 @@
-import type { Project } from './types';
+import type { Entry, Project } from './types';
 
 /** The `host` value that marks a project as a folder on this machine (mirrors `local_fs::LOCAL_HOST`). */
 export const LOCAL_HOST = 'local';
@@ -16,4 +16,12 @@ export function location(p: Pick<Project, 'host' | 'path'>, abs: string = p.path
 export function absPath(p: Pick<Project, 'path'>, rel: string): string {
   const root = p.path.replace(/\/$/, '');
   return rel ? `${root}/${rel}` : root;
+}
+
+/** Folders in a listing that could each become a project: directories, minus hidden ones, sorted by name. */
+export function subfolderNames(entries: Entry[]): string[] {
+  return entries
+    .filter((e) => e.kind === 'dir' && !e.name.startsWith('.'))
+    .map((e) => e.name)
+    .sort((a, b) => a.localeCompare(b));
 }

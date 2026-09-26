@@ -227,6 +227,12 @@ body.resizing-col { cursor: col-resize; user-select: none; }
 .modal .field-row { display: flex; justify-content: space-between; align-items: baseline; }
 .modal .field-hint { font-size: .85rem; color: var(--muted); }
 .path-row { display: flex; gap: 8px; }
+.modal label.check-row { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); cursor: pointer; }
+.modal label.check-row.disabled { color: var(--muted); cursor: default; }
+.sub-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; }
+.sub-list li { padding: 2px 0; }
+.sub-list .sub-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-list .sub-empty { color: var(--muted); font-size: .92rem; padding: 4px 0; }
 .path-row > button { padding: 4px 12px; background: var(--bg); border-color: var(--border); }
 .path-row > button:hover { background: var(--bg-hover); }
 .path-input { position: relative; flex: 1; min-width: 0; }

@@ -39,6 +39,11 @@ export function addProject(c: Config, target: GroupTarget, p: Project): Config {
   return { ...c, groups: [...c.groups, { id: newId(), name: target.newGroup, collapsed: false, projects: [p], subgroups: [] }] };
 }
 
+/** Adds several projects to one place; with a new group, the first creates it and the rest join it. */
+export function addProjects(c: Config, target: GroupTarget, ps: Project[]): Config {
+  return ps.reduce((acc, p) => addProject(acc, target, p), c);
+}
+
 export function updateProject(c: Config, id: string, patch: Partial<Omit<Project, 'id'>>): Config {
   return mapContainers(c, (x) => ({ ...x, projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
 }

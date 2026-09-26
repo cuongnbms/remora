@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'vitest';
-import { LOCAL_HOST, absPath, isLocal, location } from './project';
+import { LOCAL_HOST, absPath, isLocal, location, subfolderNames } from './project';
 
 const remote = { id: 'r', name: 'r', host: 'devbox', path: '/home/me/repo' };
 const local = { id: 'l', name: 'l', host: LOCAL_HOST, path: '/Users/me/notes' };
 
 describe('project', () => {
+  test('subfolderNames keeps visible directories, sorted', () => {
+    const e = (name: string, kind: 'file' | 'dir' | 'other') => ({ name, kind, symlink: false, size: 0, mtime: 0 });
+    expect(subfolderNames([e('bmx-worker', 'dir'), e('.git', 'dir'), e('README.md', 'file'), e('bmx-admin-web', 'dir'), e('sock', 'other')]))
+      .toEqual(['bmx-admin-web', 'bmx-worker']);
+  });
+
   test('isLocal', () => {
     expect(LOCAL_HOST).toBe('local');
     expect(isLocal(local)).toBe(true);
