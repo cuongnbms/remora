@@ -88,13 +88,16 @@ ul { list-style: none; margin: 0; padding: 0; }
 .group-row.subgroup { padding-left: 18px; margin-top: 0; font-weight: 400; }
 .project-row { display: flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 8px 2px 18px; cursor: pointer; border-radius: var(--radius-sm); }
 .project-row.nested { padding-left: 32px; }
+.project-icon { display: inline-flex; flex: none; color: var(--muted); }
+.project-row.active .project-icon { color: var(--fg); }
 .project-row:hover, .tree-row:hover, .file-results li:hover { background: var(--bg-hover); }
 .project-row.active, .tree-row.active { background: var(--bg-active); }
 .project-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.badge { font-size: .77rem; padding: 0 6px; border-radius: 999px; background: var(--bg-hover); color: var(--muted); }
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: .77rem; padding: 0 6px; border-radius: 999px; background: var(--bg-hover); color: var(--muted); }
 .project-row.active .badge { background: var(--bg); }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
-.dot.connected { background: var(--ok); } .dot.error { background: var(--error); } .dot.local { visibility: hidden; }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+.badge.error, .project-row.active .badge.error { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+.badge.error .icon { width: 11px; height: 11px; flex: none; }
 
 .find { margin: 0 10px 8px; }
 .section-title { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 4px; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }

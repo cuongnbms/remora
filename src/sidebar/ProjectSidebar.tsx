@@ -5,7 +5,7 @@ import { isLocal, location } from '../lib/project';
 import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleGroup, updateProject } from '../lib/configOps';
 import type { Group, Project, ProjectOrder, Subgroup } from '../lib/types';
 import { useStore } from '../store';
-import { CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, TrashIcon } from '../filepanel/icons';
+import { AlertIcon, CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, FolderIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, TrashIcon } from '../filepanel/icons';
 import { AddProjectDialog } from './AddProjectDialog';
 import { resolveDrop, type DragItem, type Drop } from './drag';
 
@@ -182,6 +182,21 @@ export function ProjectSidebar() {
     </div>
   );
 
+  // Connection state belongs to the host, so it rides on the host badge: a dot when connected, an alert
+  // (with the error on hover) when failing, nothing while idle. Local folders have no connection.
+  const hostBadge = (p: Project) => {
+    if (isLocal(p)) return <span className="badge">{p.host}</span>;
+    const status = hosts[p.host];
+    const state = status?.state ?? 'idle';
+    return (
+      <span className={`badge ${state}`} title={state === 'error' ? (status?.message ?? 'Connection failed') : undefined}>
+        {state === 'connected' && <span className="badge-dot" />}
+        {state === 'error' && <AlertIcon />}
+        {p.host}
+      </span>
+    );
+  };
+
   const projectRows = (projects: Project[], containerId: string, sub: boolean) =>
     projects.map((p) => (
       <div
@@ -195,9 +210,9 @@ export function ProjectSidebar() {
         onClick={() => selectProject(p.id)}
         onContextMenu={(e) => projectMenu(e, p)}
       >
-        <span className={`dot ${isLocal(p) ? 'local' : (hosts[p.host]?.state ?? 'idle')}`} />
+        <span className="project-icon"><FolderIcon open={false} /></span>
         <span className="project-name">{p.name}</span>
-        <span className="badge">{p.host}</span>
+        {hostBadge(p)}
       </div>
     ));
 

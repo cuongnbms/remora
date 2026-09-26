@@ -15,6 +15,7 @@ vi.mock('../lib/api', () => ({
   errorMessage: (e: unknown) => String(e),
 }));
 
+import { updateProject } from '../lib/configOps';
 import { DEFAULT_SETTINGS } from '../lib/settings';
 import { useStore } from '../store';
 import { ProjectSidebar } from './ProjectSidebar';
@@ -184,4 +185,30 @@ test('rows do not drag when sorted by name', async () => {
   saveConfig.mockClear();
   await dragTo(row('Work'), section('g2'), 'bottom');
   expect(saveConfig).not.toHaveBeenCalled();
+});
+
+test('host state shows on the badge, with the error on hover, and rows have no leading dot', async () => {
+  const badge = () => row('api').querySelector<HTMLElement>('.badge')!;
+  expect(container.querySelector('.dot')).toBeNull();
+  expect(badge().className).toBe('badge idle');
+  await act(async () => {
+    useStore.setState({ hosts: { devbox: { host: 'devbox', state: 'connected', message: null } } });
+  });
+  expect(badge().className).toBe('badge connected');
+  expect(badge().querySelector('.badge-dot')).not.toBeNull();
+  await act(async () => {
+    useStore.setState({ hosts: { devbox: { host: 'devbox', state: 'error', message: 'ssh: timed out' } } });
+  });
+  expect(badge().className).toBe('badge error');
+  expect(badge().title).toBe('ssh: timed out');
+  expect(badge().querySelector('svg')?.getAttribute('data-icon')).toBe('alert');
+});
+
+test('project rows lead with a folder icon, local or remote', async () => {
+  await act(async () => {
+    await useStore.getState().updateConfig((c) => updateProject(c, 'p1', { host: 'local' }));
+  });
+  const icon = (text: string) => row(text).querySelector('.project-icon svg')?.getAttribute('data-icon');
+  expect(icon('own')).toBe('folder');
+  expect(icon('api')).toBe('folder');
 });
