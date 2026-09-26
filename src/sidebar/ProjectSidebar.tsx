@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { PromptDialog, type PromptState } from '../components/PromptDialog';
 import { isLocal, location } from '../lib/project';
-import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from '../lib/configOps';
-import type { Group, Project, Subgroup } from '../lib/types';
+import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleGroup, updateProject } from '../lib/configOps';
+import type { Group, Project, ProjectOrder, Subgroup } from '../lib/types';
 import { useStore } from '../store';
-import { ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, GearIcon, PencilIcon, PlusIcon, TrashIcon } from '../filepanel/icons';
+import { CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, TrashIcon } from '../filepanel/icons';
 import { AddProjectDialog } from './AddProjectDialog';
+import { resolveDrop, type DragItem, type Drop } from './drag';
+
+// Pixels the pointer must travel before a press on a row becomes a drag rather than a click.
+const DRAG_THRESHOLD = 4;
 
 export function ProjectSidebar() {
   const config = useStore((s) => s.config);
@@ -16,8 +20,72 @@ export function ProjectSidebar() {
   const [adding, setAdding] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [prompt, setPrompt] = useState<PromptState | null>(null);
+  const [drag, setDrag] = useState<{ item: DragItem; drop: Drop | null } | null>(null);
+  const endDrag = useRef<(() => void) | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const { updateConfig, selectProject } = useStore.getState();
+  const order = config.settings.projectOrder;
+  const view = sidebarView(config);
+
+  useEffect(() => () => endDrag.current?.(), []);
+
+  // Manual order only: a press that moves past the threshold drags the row; Escape or losing focus cancels.
+  const startDrag = (e: React.PointerEvent, item: DragItem) => {
+    if (e.button !== 0 || order !== 'manual') return;
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    let active = false;
+    let drop: Drop | null = null;
+    const move = (ev: PointerEvent) => {
+      if (!active && Math.hypot(ev.clientX - x0, ev.clientY - y0) < DRAG_THRESHOLD) return;
+      active = true;
+      drop = resolveDrop(useStore.getState().config, item, document.elementFromPoint(ev.clientX, ev.clientY), ev.clientY);
+      setDrag({ item, drop });
+    };
+    const finish = (commit: boolean) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('keydown', key);
+      window.removeEventListener('blur', cancel);
+      endDrag.current = null;
+      if (!active) return;
+      setDrag(null);
+      // The click that follows the release would toggle or select whatever row it landed on.
+      const swallow = (ev: MouseEvent) => ev.stopPropagation();
+      window.addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
+      if (commit && drop) void updateConfig(drop.apply);
+    };
+    const up = () => finish(true);
+    const cancel = () => finish(false);
+    const key = (ev: KeyboardEvent) => ev.key === 'Escape' && finish(false);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('keydown', key);
+    window.addEventListener('blur', cancel);
+    endDrag.current = cancel;
+  };
+
+  // Drop-line class for a row or section, and the faded look of the item being dragged.
+  const dragClass = (id: string, on: 'row' | 'section') => {
+    if (!drag) return '';
+    const hint = drag.drop?.hint;
+    return (drag.item.id === id && (on === 'section' || drag.item.kind === 'project') ? ' dragging' : '') +
+      (hint && hint.id === id && hint.on === on ? ` drop-${hint.pos}` : '');
+  };
+
+  const orderMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const choice = (value: ProjectOrder, label: string) => ({
+      label,
+      icon: order === value ? <CheckIcon /> : null,
+      onSelect: () => void useStore.getState().updateSettings({ projectOrder: value }),
+    });
+    setMenu({ x: r.left, y: r.bottom + 2, items: [choice('manual', 'Manual order'), choice('name', 'Sort by name')] });
+  };
 
   const editPath = useCallback((p: Project) => {
     setPrompt({
@@ -44,7 +112,7 @@ export function ProjectSidebar() {
 
   const projectMenu = (e: React.MouseEvent, p: Project) => {
     e.preventDefault();
-    const otherGroups = containers(config).filter((x) => !x.container.projects.some((q) => q.id === p.id));
+    const otherGroups = containers(view).filter((x) => !x.container.projects.some((q) => q.id === p.id));
     setMenu({
       x: e.clientX,
       y: e.clientY,
@@ -102,7 +170,10 @@ export function ProjectSidebar() {
 
   const groupRow = (g: Group | Subgroup, sub: boolean) => (
     <div
-      className={'group-row' + (sub ? ' subgroup' : '') + (g.collapsed ? '' : ' open')}
+      className={'group-row' + (sub ? ' subgroup' : '') + (g.collapsed ? '' : ' open') + dragClass(g.id, 'row')}
+      data-row={sub ? 'subgroup' : 'group'}
+      data-id={g.id}
+      onPointerDown={(e) => startDrag(e, { kind: sub ? 'subgroup' : 'group', id: g.id })}
       onClick={() => void updateConfig((c) => toggleGroup(c, g.id))}
       onContextMenu={(e) => groupMenu(e, g)}
     >
@@ -111,12 +182,16 @@ export function ProjectSidebar() {
     </div>
   );
 
-  const projectRows = (projects: Project[], sub: boolean) =>
+  const projectRows = (projects: Project[], containerId: string, sub: boolean) =>
     projects.map((p) => (
       <div
         key={p.id}
-        className={'project-row' + (sub ? ' nested' : '') + (p.id === activeId ? ' active' : '')}
+        className={'project-row' + (sub ? ' nested' : '') + (p.id === activeId ? ' active' : '') + dragClass(p.id, 'row')}
         title={location(p)}
+        data-row="project"
+        data-id={p.id}
+        data-container={containerId}
+        onPointerDown={(e) => startDrag(e, { kind: 'project', id: p.id })}
         onClick={() => selectProject(p.id)}
         onContextMenu={(e) => projectMenu(e, p)}
       >
@@ -127,27 +202,32 @@ export function ProjectSidebar() {
     ));
 
   return (
-    <aside className="sidebar" onContextMenu={sidebarMenu}>
+    <aside className={'sidebar' + (drag ? ' dragging' : '')} onContextMenu={sidebarMenu}>
       <div className="sidebar-header">
         <span>Projects</span>
-        <button className="icon-btn" title="Add project" aria-label="Add project" onClick={() => setAdding(true)}>
-          <PlusIcon />
-        </button>
+        <span className="sidebar-actions">
+          <button className="icon-btn" title="Project order" aria-label="Project order" onClick={orderMenu}>
+            <SortIcon />
+          </button>
+          <button className="icon-btn" title="Add project" aria-label="Add project" onClick={() => setAdding(true)}>
+            <PlusIcon />
+          </button>
+        </span>
       </div>
       <div className="sidebar-body">
         {config.groups.length === 0 && <p className="muted pad">No projects yet. Click + to add one.</p>}
-        {config.groups.map((g) => (
-          <section key={g.id}>
+        {view.groups.map((g) => (
+          <section key={g.id} data-group={g.id} className={dragClass(g.id, 'section').trim() || undefined}>
             {groupRow(g, false)}
             {!g.collapsed && (
               <>
                 {g.subgroups.map((s) => (
-                  <section key={s.id}>
+                  <section key={s.id} data-subgroup={s.id} data-parent={g.id} className={dragClass(s.id, 'section').trim() || undefined}>
                     {groupRow(s, true)}
-                    {!s.collapsed && projectRows(s.projects, true)}
+                    {!s.collapsed && projectRows(s.projects, s.id, true)}
                   </section>
                 ))}
-                {projectRows(g.projects, false)}
+                {projectRows(g.projects, g.id, false)}
               </>
             )}
           </section>

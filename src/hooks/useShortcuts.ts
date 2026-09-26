@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { flatProjects } from '../lib/configOps';
+import { flatProjects, sidebarView } from '../lib/configOps';
 import { useStore } from '../store';
 
 type Handlers = { toggleLeft: () => void; toggleRight: () => void };
@@ -34,7 +34,7 @@ export function useShortcuts(handlers: Handlers): void {
       else if (e.shiftKey && e.code === 'BracketLeft') s.cycleTab(-1);
       else if (e.shiftKey && e.code === 'BracketRight') s.cycleTab(1);
       else if (/^Digit[1-9]$/.test(e.code)) {
-        const project = flatProjects(s.config)[Number(e.code.slice(5)) - 1];
+        const project = flatProjects(sidebarView(s.config))[Number(e.code.slice(5)) - 1];
         if (project) s.selectProject(project.id);
         else handled = false;
       } else handled = false;

@@ -3,7 +3,9 @@ export type Project = { id: string; name: string; host: string; path: string };
 export type Subgroup = { id: string; name: string; collapsed: boolean; projects: Project[] };
 export type Group = Subgroup & { subgroups: Subgroup[] };
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type Settings = { theme: ThemeMode; uiFont: string | null; codeFont: string | null; fontSize: number; excludes: string[] };
+/** How the sidebar orders groups, subgroups and projects: as stored (drag to reorder) or by name. */
+export type ProjectOrder = 'manual' | 'name';
+export type Settings = { theme: ThemeMode; uiFont: string | null; codeFont: string | null; fontSize: number; excludes: string[]; projectOrder: ProjectOrder };
 export type Config = { version: number; groups: Group[]; settings: Settings };
 export type FontFamily = { family: string; monospace: boolean };
 

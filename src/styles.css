@@ -75,6 +75,14 @@ ul { list-style: none; margin: 0; padding: 0; }
 .sidebar-header, .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 6px 14px; font-weight: 600; }
 .sidebar-body { overflow-y: auto; flex: 1; padding: 0 6px 6px; }
 .sidebar-footer { display: flex; padding: 6px 8px 8px; flex: none; }
+.sidebar-actions { display: flex; gap: 2px; }
+/* Drag to reorder (manual order): a 2px accent line marks where the item lands, a ring marks "into". */
+.sidebar.dragging, .sidebar.dragging * { cursor: grabbing !important; }
+.sidebar .dragging { opacity: .45; }
+.sidebar.dragging .project-row:hover, .sidebar.dragging .group-row:hover { background: none; }
+.sidebar .drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.sidebar .drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+.sidebar .drop-into { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .group-row { display: flex; align-items: center; gap: 4px; padding: 4px 8px; margin-top: 2px; font-weight: 600; cursor: pointer; user-select: none; border-radius: var(--radius-sm); }
 .group-row:hover { background: var(--bg-hover); }
 .group-row.subgroup { padding-left: 18px; margin-top: 0; font-weight: 400; }

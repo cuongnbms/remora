@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { api, errorMessage } from '../lib/api';
-import { addProjects, containers, findProject, flatProjects, newId, type GroupTarget } from '../lib/configOps';
+import { addProjects, containers, findProject, flatProjects, newId, sidebarView, type GroupTarget } from '../lib/configOps';
 import { basename } from '../lib/paths';
 import { contractHome, expandHome, loadLastHost, saveLastHost } from '../lib/pathInput';
 import { LOCAL_HOST, absPath, subfolderNames } from '../lib/project';
@@ -253,7 +253,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
         <label>
           Group
           <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-            {containers(config).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            {containers(sidebarView(config)).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
             <option value={NEW_GROUP}>New group…</option>
           </select>
         </label>

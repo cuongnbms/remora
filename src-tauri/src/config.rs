@@ -52,6 +52,15 @@ pub enum ThemeMode {
     Dark,
 }
 
+/// How the sidebar orders groups, subgroups and projects: as stored (the user drags them) or by name.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProjectOrder {
+    #[default]
+    Manual,
+    Name,
+}
+
 pub const MIN_FONT_SIZE: u32 = 10;
 pub const MAX_FONT_SIZE: u32 = 24;
 const MAX_FONT_NAME: usize = 100;
@@ -73,6 +82,7 @@ pub struct Settings {
     pub code_font: Option<String>,
     pub font_size: u32,
     pub excludes: Vec<String>,
+    pub project_order: ProjectOrder,
 }
 
 impl Default for Settings {
@@ -83,6 +93,7 @@ impl Default for Settings {
             code_font: None,
             font_size: 13,
             excludes: DEFAULT_EXCLUDES.iter().map(|s| s.to_string()).collect(),
+            project_order: ProjectOrder::Manual,
         }
     }
 }
@@ -497,12 +508,14 @@ mod tests {
             code_font: Some("JetBrains Mono".into()),
             font_size: 15,
             excludes: vec!["node_modules".into(), "my out".into()],
+            project_order: ProjectOrder::Name,
         };
         store.save(cfg.clone()).unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.contains(r#""theme": "dark""#));
         assert!(text.contains(r#""codeFont": "JetBrains Mono""#));
         assert!(text.contains(r#""fontSize": 15"#));
+        assert!(text.contains(r#""projectOrder": "name""#));
         let (again, warning) = ConfigStore::load(path);
         assert!(warning.is_none());
         assert_eq!(again.get(), cfg);

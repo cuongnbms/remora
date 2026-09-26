@@ -224,3 +224,15 @@ export const SearchIcon = () => (
     <path d="m20 20-4-4" />
   </Svg>
 );
+
+export const SortIcon = () => (
+  <Svg name="sort">
+    <path d="m3 16 4 4 4-4M7 20V4M11 4h10M11 8h7M11 12h4" />
+  </Svg>
+);
+
+export const CheckIcon = () => (
+  <Svg name="check">
+    <path d="M20 6 9 17l-5-5" />
+  </Svg>
+);

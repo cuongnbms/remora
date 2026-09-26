@@ -27,7 +27,7 @@ describe('applySettings', () => {
   });
 
   test('sets theme attribute and css variables', () => {
-    applySettings({ theme: 'dark', uiFont: 'Inter', codeFont: 'Fira Code', fontSize: 15, excludes: [] }, root);
+    applySettings({ theme: 'dark', uiFont: 'Inter', codeFont: 'Fira Code', fontSize: 15, excludes: [], projectOrder: 'manual' }, root);
     expect(root.dataset.theme).toBe('dark');
     expect(root.style.getPropertyValue('--font-size')).toBe('15px');
     expect(root.style.getPropertyValue('--font-ui')).toContain('"Inter"');
@@ -35,7 +35,7 @@ describe('applySettings', () => {
   });
 
   test('defaults clear font overrides so the stylesheet stack applies', () => {
-    applySettings({ theme: 'dark', uiFont: 'Inter', codeFont: 'Fira Code', fontSize: 15, excludes: [] }, root);
+    applySettings({ theme: 'dark', uiFont: 'Inter', codeFont: 'Fira Code', fontSize: 15, excludes: [], projectOrder: 'manual' }, root);
     applySettings(DEFAULT_SETTINGS, root);
     expect(root.dataset.theme).toBe('system');
     expect(root.style.getPropertyValue('--font-ui')).toBe('');
@@ -48,7 +48,7 @@ describe('settings cache', () => {
   beforeEach(() => localStorage.clear());
 
   test('roundtrips', () => {
-    const s = { theme: 'light', uiFont: null, codeFont: 'Menlo', fontSize: 14, excludes: ['out'] } as const;
+    const s = { theme: 'light', uiFont: null, codeFont: 'Menlo', fontSize: 14, excludes: ['out'], projectOrder: 'name' } as const;
     cacheSettings({ ...s, excludes: [...s.excludes] });
     expect(readCachedSettings()).toEqual(s);
   });
@@ -63,6 +63,8 @@ describe('settings cache', () => {
     localStorage.setItem('remora.settings', '{oops');
     expect(readCachedSettings()).toEqual(DEFAULT_SETTINGS);
     localStorage.setItem('remora.settings', JSON.stringify({ theme: 'blue', fontSize: 'x' }));
+    expect(readCachedSettings()).toEqual(DEFAULT_SETTINGS);
+    localStorage.setItem('remora.settings', JSON.stringify({ ...DEFAULT_SETTINGS, projectOrder: 'size' }));
     expect(readCachedSettings()).toEqual(DEFAULT_SETTINGS);
   });
 });

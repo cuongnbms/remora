@@ -111,3 +111,77 @@ test('menu items show an icon before the label', async () => {
   expect(icon('Remove')).toBe('trash');
   expect(icon('Move to Home')).toBe('folder-input');
 });
+
+const pointer = (type: string, target: EventTarget, x: number, y: number) =>
+  target.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y }));
+
+/** Drags `from` onto `to`, landing in its top or bottom half; `to` is what elementFromPoint reports. */
+async function dragTo(from: HTMLElement, to: HTMLElement, half: 'top' | 'bottom', end: 'drop' | 'escape' = 'drop') {
+  vi.spyOn(to, 'getBoundingClientRect').mockReturnValue({ top: 100, height: 20, bottom: 120, left: 0, right: 100, width: 100, x: 0, y: 100, toJSON: () => ({}) });
+  const y = half === 'top' ? 102 : 118;
+  document.elementFromPoint = vi.fn(() => to);
+  await act(async () => {
+    pointer('pointerdown', from, 0, 0);
+    pointer('pointermove', window, 0, y);
+    await flush();
+  });
+  await act(async () => {
+    if (end === 'drop') {
+      pointer('pointerup', window, 0, y);
+      to.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    } else window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+  });
+}
+const groups = () => useStore.getState().config.groups;
+const section = (id: string) => container.querySelector<HTMLElement>(`[data-group="${id}"], [data-subgroup="${id}"]`)!;
+
+test('order button switches to sorting by name without changing the stored order', async () => {
+  await click(container.querySelector('[aria-label="Project order"]')!);
+  expect(menuItems()).toEqual(['Manual order', 'Sort by name']);
+  await click([...document.querySelectorAll('.context-menu li')].find((li) => li.textContent === 'Sort by name')!);
+  expect(useStore.getState().config.settings.projectOrder).toBe('name');
+  expect(saveConfig).toHaveBeenCalled();
+  expect(rows()).toEqual(['group:Home', 'group:Work', 'sub:Api', 'project:apidevbox', 'sub:Web', 'project:owndevbox']);
+  expect(groups().map((g) => g.id)).toEqual(['g1', 'g2']);
+});
+
+test('dragging a project onto the top half of another inserts it before, and the drop click is swallowed', async () => {
+  await dragTo(row('own'), row('api'), 'top');
+  expect(groups()[0].subgroups[0].projects.map((p) => p.id)).toEqual(['p1', 'p2']);
+  expect(groups()[0].projects).toEqual([]);
+  expect(useStore.getState().activeProjectId).toBeNull();
+});
+
+test('dragging a project onto a group row appends it there', async () => {
+  await dragTo(row('api'), row('Home'), 'top');
+  expect(groups()[1].projects.map((p) => p.id)).toEqual(['p2']);
+  expect(groups()[1].collapsed).toBe(false);
+});
+
+test('dragging a group below another reorders groups', async () => {
+  await dragTo(row('Work'), section('g2'), 'bottom');
+  expect(groups().map((g) => g.id)).toEqual(['g2', 'g1']);
+});
+
+test('dragging a subgroup into another group moves it with its projects', async () => {
+  await dragTo(row('Api'), row('Home'), 'top');
+  expect(groups()[0].subgroups.map((s) => s.id)).toEqual(['s2']);
+  expect(groups()[1].subgroups.map((s) => s.id)).toEqual(['s1']);
+  expect(groups()[1].subgroups[0].projects.map((p) => p.id)).toEqual(['p2']);
+});
+
+test('Escape cancels a drag', async () => {
+  await dragTo(row('Work'), section('g2'), 'bottom', 'escape');
+  expect(groups().map((g) => g.id)).toEqual(['g1', 'g2']);
+  expect(saveConfig).not.toHaveBeenCalled();
+});
+
+test('rows do not drag when sorted by name', async () => {
+  await act(async () => {
+    await useStore.getState().updateSettings({ projectOrder: 'name' });
+  });
+  saveConfig.mockClear();
+  await dragTo(row('Work'), section('g2'), 'bottom');
+  expect(saveConfig).not.toHaveBeenCalled();
+});

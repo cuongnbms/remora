@@ -1,4 +1,4 @@
-import type { Settings, ThemeMode } from './types';
+import type { ProjectOrder, Settings, ThemeMode } from './types';
 
 // Keep in sync with src-tauri/src/config.rs.
 export const MIN_FONT_SIZE = 10;
@@ -7,10 +7,11 @@ export const DEFAULT_EXCLUDES = [
   '.git', 'node_modules', 'dist', 'target', '.venv', 'venv', '__pycache__', '.mypy_cache',
   '.pytest_cache', '.ruff_cache', '.tox', '.next', '.nuxt', '.gradle', '.idea', 'build',
 ];
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', uiFont: null, codeFont: null, fontSize: 13, excludes: DEFAULT_EXCLUDES };
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', uiFont: null, codeFont: null, fontSize: 13, excludes: DEFAULT_EXCLUDES, projectOrder: 'manual' };
 
 const CACHE_KEY = 'remora.settings';
 const THEMES: ThemeMode[] = ['system', 'light', 'dark'];
+const ORDERS: ProjectOrder[] = ['manual', 'name'];
 
 export function isDark(theme: ThemeMode, systemDark: boolean): boolean {
   return theme === 'system' ? systemDark : theme === 'dark';
@@ -38,8 +39,8 @@ export function parseExcludes(text: string): string[] {
   return [...new Set(text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean))];
 }
 
-/** Settings as cached; `excludes` is optional because caches from older versions lack it. */
-function isSettings(v: unknown): v is Omit<Settings, 'excludes'> & { excludes?: string[] } {
+/** Settings as cached; `excludes` and `projectOrder` are optional because caches from older versions lack them. */
+function isSettings(v: unknown): v is Omit<Settings, 'excludes' | 'projectOrder'> & Partial<Pick<Settings, 'excludes' | 'projectOrder'>> {
   if (!v || typeof v !== 'object') return false;
   const s = v as Record<string, unknown>;
   const font = (f: unknown) => f === null || typeof f === 'string';
@@ -50,7 +51,8 @@ function isSettings(v: unknown): v is Omit<Settings, 'excludes'> & { excludes?: 
     typeof s.fontSize === 'number' &&
     s.fontSize >= MIN_FONT_SIZE &&
     s.fontSize <= MAX_FONT_SIZE &&
-    (s.excludes === undefined || (Array.isArray(s.excludes) && s.excludes.every((n) => typeof n === 'string')))
+    (s.excludes === undefined || (Array.isArray(s.excludes) && s.excludes.every((n) => typeof n === 'string'))) &&
+    (s.projectOrder === undefined || ORDERS.includes(s.projectOrder as ProjectOrder))
   );
 }
 

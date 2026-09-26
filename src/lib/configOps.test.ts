@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Config } from './types';
-import { addGroup, addProject, addProjects, addSubgroup, containers, findProject, flatProjects, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from './configOps';
+import { addGroup, addProject, addProjects, addSubgroup, containers, findProject, flatProjects, moveGroup, moveProject, moveSubgroup, removeGroup, removeProject, renameGroup, sidebarView, sortByName, toggleGroup, updateProject } from './configOps';
 import { DEFAULT_SETTINGS } from './settings';
 
 const base: Config = {
@@ -119,4 +119,71 @@ test('subgroup rename, toggle, remove only when empty', () => {
 test('a group with subgroups is not empty', () => {
   const onlySubgroups = removeProject(removeProject(nested, 'p1'), 'p3');
   expect(() => removeGroup(onlySubgroups, 'g1')).toThrow('Group is not empty');
+});
+
+const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+const pr = (id: string, name: string) => ({ id, name, host: 'devbox', path: `/${id}` });
+const ordered: Config = {
+  version: 1,
+  settings: DEFAULT_SETTINGS,
+  groups: [
+    {
+      id: 'g1',
+      name: 'Work',
+      collapsed: false,
+      projects: [pr('p1', 'zeta'), pr('p2', 'Alpha'), pr('p3', 'item10'), pr('p4', 'item2')],
+      subgroups: [
+        { id: 's1', name: 'web', collapsed: false, projects: [pr('p5', 'b'), pr('p6', 'a')] },
+        { id: 's2', name: 'Api', collapsed: false, projects: [] },
+      ],
+    },
+    { id: 'g2', name: 'home', collapsed: false, projects: [], subgroups: [{ id: 's3', name: 'x', collapsed: false, projects: [] }] },
+    { id: 'g3', name: 'Archive', collapsed: false, projects: [], subgroups: [] },
+  ],
+};
+
+test('moveProject inserts before a sibling, or at the end, in any container', () => {
+  expect(ids(moveProject(ordered, 'p4', 'g1', 'p1').groups[0].projects)).toEqual(['p4', 'p1', 'p2', 'p3']);
+  expect(ids(moveProject(ordered, 'p1', 'g1', null).groups[0].projects)).toEqual(['p2', 'p3', 'p4', 'p1']);
+  expect(ids(moveProject(ordered, 'p1', 'g1', 'p3').groups[0].projects)).toEqual(['p2', 'p1', 'p3', 'p4']);
+  const across = moveProject(ordered, 'p2', 's1', 'p6');
+  expect(ids(across.groups[0].projects)).toEqual(['p1', 'p3', 'p4']);
+  expect(ids(across.groups[0].subgroups[0].projects)).toEqual(['p5', 'p2', 'p6']);
+  expect(ids(moveProject(ordered, 'p5', 's3').groups[1].subgroups[0].projects)).toEqual(['p5']);
+  expect(moveProject(ordered, 'nope', 'g1', null)).toBe(ordered);
+  expect(() => moveProject(ordered, 'p1', 'nope')).toThrow();
+});
+
+test('moveGroup reorders top-level groups', () => {
+  expect(ids(moveGroup(ordered, 'g3', 'g1').groups)).toEqual(['g3', 'g1', 'g2']);
+  expect(ids(moveGroup(ordered, 'g1', null).groups)).toEqual(['g2', 'g3', 'g1']);
+  expect(ids(moveGroup(ordered, 'g1', 'g3').groups)).toEqual(['g2', 'g1', 'g3']);
+  expect(moveGroup(ordered, 'nope', null)).toBe(ordered);
+});
+
+test('moveSubgroup reorders within a group and moves to another group with its projects', () => {
+  expect(ids(moveSubgroup(ordered, 's2', 'g1', 's1').groups[0].subgroups)).toEqual(['s2', 's1']);
+  const across = moveSubgroup(ordered, 's1', 'g2', 's3');
+  expect(ids(across.groups[0].subgroups)).toEqual(['s2']);
+  expect(ids(across.groups[1].subgroups)).toEqual(['s1', 's3']);
+  expect(ids(across.groups[1].subgroups[0].projects)).toEqual(['p5', 'p6']);
+  expect(ids(moveSubgroup(ordered, 's3', 'g3', null).groups[2].subgroups)).toEqual(['s3']);
+  expect(moveSubgroup(ordered, 'nope', 'g1', null)).toBe(ordered);
+  expect(moveSubgroup(ordered, 's1', 'nope', null)).toBe(ordered);
+  expect(moveSubgroup(ordered, 's1', 's2', null)).toBe(ordered);
+});
+
+test('sortByName sorts groups, subgroups and projects case-insensitively with numeric runs', () => {
+  const sorted = sortByName(ordered);
+  expect(ids(sorted.groups)).toEqual(['g3', 'g2', 'g1']);
+  expect(ids(sorted.groups[2].subgroups)).toEqual(['s2', 's1']);
+  expect(ids(sorted.groups[2].projects)).toEqual(['p2', 'p4', 'p3', 'p1']);
+  expect(ids(sorted.groups[2].subgroups[1].projects)).toEqual(['p6', 'p5']);
+  expect(ids(ordered.groups)).toEqual(['g1', 'g2', 'g3']);
+});
+
+test('sidebarView follows the projectOrder setting', () => {
+  expect(sidebarView(ordered)).toBe(ordered);
+  const byName = { ...ordered, settings: { ...ordered.settings, projectOrder: 'name' as const } };
+  expect(ids(sidebarView(byName).groups)).toEqual(['g3', 'g2', 'g1']);
 });

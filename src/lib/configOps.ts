@@ -52,11 +52,51 @@ export function removeProject(c: Config, id: string): Config {
   return mapContainers(c, (x) => ({ ...x, projects: x.projects.filter((p) => p.id !== id) }));
 }
 
-export function moveProject(c: Config, id: string, toGroupId: string): Config {
+/** `item` placed before the entry with id `beforeId`, or at the end when that is null or not in the list. */
+function insertBefore<T extends { id: string }>(list: T[], item: T, beforeId: string | null): T[] {
+  const i = beforeId === null ? -1 : list.findIndex((x) => x.id === beforeId);
+  return i < 0 ? [...list, item] : [...list.slice(0, i), item, ...list.slice(i)];
+}
+
+/** Moves a project into a group or subgroup, before `beforeId` there (null: at the end). */
+export function moveProject(c: Config, id: string, toGroupId: string, beforeId: string | null = null): Config {
   const p = findProject(c, id);
   if (!p) return c;
-  return addProject(removeProject(c, id), { groupId: toGroupId }, p);
+  if (!findContainer(c, toGroupId)) throw new Error('Group not found');
+  return mapContainers(removeProject(c, id), (x) => (x.id === toGroupId ? { ...x, projects: insertBefore(x.projects, p, beforeId) } : x));
 }
+
+/** Moves a top-level group before `beforeId` (null: to the end). */
+export function moveGroup(c: Config, id: string, beforeId: string | null): Config {
+  const g = c.groups.find((x) => x.id === id);
+  if (!g) return c;
+  return { ...c, groups: insertBefore(c.groups.filter((x) => x.id !== id), g, beforeId) };
+}
+
+/** Moves a subgroup, with its projects, into a top-level group before `beforeId` (null: at the end). */
+export function moveSubgroup(c: Config, id: string, toGroupId: string, beforeId: string | null): Config {
+  const s = c.groups.flatMap((g) => g.subgroups).find((x) => x.id === id);
+  if (!s || !c.groups.some((g) => g.id === toGroupId)) return c;
+  return {
+    ...c,
+    groups: c.groups.map((g) => {
+      const rest = g.subgroups.filter((x) => x.id !== id);
+      return { ...g, subgroups: g.id === toGroupId ? insertBefore(rest, s, beforeId) : rest };
+    }),
+  };
+}
+
+const byName = <T extends { name: string }>(xs: T[]): T[] =>
+  [...xs].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+/** A copy with groups, subgroups and projects each sorted by name; the stored order is untouched. */
+export function sortByName(c: Config): Config {
+  const sortIn = <T extends Subgroup>(x: T): T => ({ ...x, projects: byName(x.projects) });
+  return { ...c, groups: byName(c.groups).map((g) => ({ ...sortIn(g), subgroups: byName(g.subgroups).map(sortIn) })) };
+}
+
+/** The config as the sidebar shows it, per the `projectOrder` setting. */
+export const sidebarView = (c: Config): Config => (c.settings.projectOrder === 'name' ? sortByName(c) : c);
 
 /** Appends an empty top-level group; a group with that name already there is left as the only one. */
 export function addGroup(c: Config, name: string): Config {
