@@ -1,6 +1,6 @@
 # Remora
 
-A small desktop viewer for projects on remote dev boxes and on this Mac. It shows projects in a sidebar, renders markdown (GFM, mermaid, TOC), highlights code, and reloads automatically when an agent writes a file. You can drop files from Finder onto the file tree to upload them into a project, and right-click a file or folder to download it; nothing on the host is ever overwritten.
+A small macOS desktop viewer for projects on remote dev boxes and in local folders. It shows projects in a sidebar, renders markdown (GFM, mermaid, TOC), highlights code, and reloads automatically when an agent writes a file. You can drop files from Finder onto the file tree to upload them into a project, and right-click a file or folder to download it; nothing on the host is ever overwritten.
 
 ![Remora showing a markdown plan with TOC and a mermaid diagram from a remote project](screenshot.jpg)
 
@@ -8,7 +8,7 @@ A small desktop viewer for projects on remote dev boxes and on this Mac. It show
 
 - macOS, Rust ≥ 1.80, Node ≥ 20, pnpm.
 - Each host is an alias in `~/.ssh/config` that logs in with a key or ssh-agent. Remora uses `BatchMode=yes` and never asks for a password.
-- To view a folder on this Mac, use the host `local` (so an ssh alias named `local` cannot be used). Local projects are read directly and watched with FSEvents.
+- To view a folder on your Mac, use the host `local` (so an ssh alias named `local` cannot be used). Local projects are read directly and watched with FSEvents.
 - The remote is Linux with GNU coreutils/findutils.
 - Install `inotify-tools` on each remote (strongly recommended):
 
