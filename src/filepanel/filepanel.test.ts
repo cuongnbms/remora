@@ -490,4 +490,16 @@ describe('FileTree transfers', () => {
       expect(container.querySelector('.context-menu')).toBeNull();
     }
   });
+
+  test('file menu lists copy actions first, then a separator and Download', async () => {
+    await tree();
+    await act(async () => {
+      byTitle('docs/nested.md')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 3, clientY: 4 }));
+      await flush();
+    });
+    const rows = [...container.querySelectorAll('.context-menu li')].map((li) =>
+      li.classList.contains('separator') ? '---' : `${li.querySelector('svg')?.getAttribute('data-icon')}:${li.textContent}`,
+    );
+    expect(rows).toEqual(['copy:Copy Path', 'copy:Copy Relative Path', '---', 'download:Download']);
+  });
 });

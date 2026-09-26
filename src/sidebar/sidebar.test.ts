@@ -102,3 +102,12 @@ test('project menu can move into other groups and subgroups', async () => {
   await click([...document.querySelectorAll('.context-menu li')].find((li) => li.textContent === 'Move to Work / Web')!);
   expect(useStore.getState().config.groups[0].subgroups[1].projects.map((p) => p.id)).toEqual(['p3', 'p2']);
 });
+
+test('menu items show an icon before the label', async () => {
+  await contextMenu(row('api'));
+  const icon = (label: string) =>
+    [...document.querySelectorAll('.context-menu li')].find((li) => li.textContent === label)?.querySelector('.menu-icon svg')?.getAttribute('data-icon');
+  expect(icon('Rename…')).toBe('pencil');
+  expect(icon('Remove')).toBe('trash');
+  expect(icon('Move to Home')).toBe('folder-input');
+});

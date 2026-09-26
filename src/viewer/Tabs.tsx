@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
-import { CloseIcon } from '../filepanel/icons';
+import { CloseAllIcon, CloseIcon, CloseOthersIcon, CloseRightIcon } from '../filepanel/icons';
 import { basename } from '../lib/paths';
 import { useStore } from '../store';
 
@@ -17,10 +17,10 @@ export function Tabs({ tabs, active, preview }: { tabs: string[]; active: string
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'Close', onSelect: () => closeTab(t) },
-        { label: 'Close Others', disabled: tabs.length === 1, onSelect: () => closeTabs('others', t) },
-        { label: 'Close to the Right', disabled: isLast, onSelect: () => closeTabs('right', t) },
-        { label: 'Close All', onSelect: () => closeTabs('all', t) },
+        { label: 'Close', icon: <CloseIcon />, onSelect: () => closeTab(t) },
+        { label: 'Close Others', icon: <CloseOthersIcon />, disabled: tabs.length === 1, onSelect: () => closeTabs('others', t) },
+        { label: 'Close to the Right', icon: <CloseRightIcon />, disabled: isLast, onSelect: () => closeTabs('right', t) },
+        { label: 'Close All', icon: <CloseAllIcon />, onSelect: () => closeTabs('all', t) },
       ],
     });
   };

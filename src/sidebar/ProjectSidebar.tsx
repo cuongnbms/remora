@@ -5,7 +5,7 @@ import { isLocal, location } from '../lib/project';
 import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, toggleGroup, updateProject } from '../lib/configOps';
 import type { Group, Project, Subgroup } from '../lib/types';
 import { useStore } from '../store';
-import { ChevronIcon, GearIcon, PlusIcon } from '../filepanel/icons';
+import { ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, GearIcon, PencilIcon, PlusIcon, TrashIcon } from '../filepanel/icons';
 import { AddProjectDialog } from './AddProjectDialog';
 
 export function ProjectSidebar() {
@@ -49,11 +49,12 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'Rename…', onSelect: () => setPrompt({ title: 'Rename project', initial: p.name, onSubmit: (name) => void updateConfig((c) => updateProject(c, p.id, { name })) }) },
-        { label: 'Edit path…', onSelect: () => editPath(p) },
-        ...otherGroups.map((x) => ({ label: `Move to ${x.label}`, onSelect: () => void updateConfig((c) => moveProject(c, p.id, x.id)) })),
+        { label: 'Rename…', icon: <PencilIcon />, onSelect: () => setPrompt({ title: 'Rename project', initial: p.name, onSubmit: (name) => void updateConfig((c) => updateProject(c, p.id, { name })) }) },
+        { label: 'Edit path…', icon: <FolderPenIcon />, onSelect: () => editPath(p) },
+        ...otherGroups.map((x) => ({ label: `Move to ${x.label}`, icon: <FolderInputIcon />, onSelect: () => void updateConfig((c) => moveProject(c, p.id, x.id)) })),
         {
           label: 'Remove',
+          icon: <TrashIcon />,
           onSelect: async () => {
             await updateConfig((c) => removeProject(c, p.id));
             // Only drop the active selection once the removal is persisted.
@@ -75,11 +76,11 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'Rename…', onSelect: () => setPrompt({ title: isGroup ? 'Rename group' : 'Rename subgroup', initial: g.name, onSubmit: (name) => void updateConfig((c) => renameGroup(c, g.id, name)) }) },
+        { label: 'Rename…', icon: <PencilIcon />, onSelect: () => setPrompt({ title: isGroup ? 'Rename group' : 'Rename subgroup', initial: g.name, onSubmit: (name) => void updateConfig((c) => renameGroup(c, g.id, name)) }) },
         ...(isGroup
-          ? [{ label: 'New subgroup…', onSelect: () => setPrompt({ title: `New subgroup in ${g.name}`, initial: '', onSubmit: (name) => void updateConfig((c) => addSubgroup(c, g.id, name)) }) }]
+          ? [{ label: 'New subgroup…', icon: <FolderPlusIcon />, onSelect: () => setPrompt({ title: `New subgroup in ${g.name}`, initial: '', onSubmit: (name) => void updateConfig((c) => addSubgroup(c, g.id, name)) }) }]
           : []),
-        { label: notEmpty ? 'Remove (group not empty)' : 'Remove', disabled: notEmpty, onSelect: () => void updateConfig((c) => removeGroup(c, g.id)) },
+        { label: notEmpty ? 'Remove (group not empty)' : 'Remove', icon: <TrashIcon />, disabled: notEmpty, onSelect: () => void updateConfig((c) => removeGroup(c, g.id)) },
       ],
     });
   };
@@ -93,8 +94,8 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'New project…', onSelect: () => setAdding(true) },
-        { label: 'New group…', onSelect: () => setPrompt({ title: 'New group', initial: '', onSubmit: (name) => void updateConfig((c) => addGroup(c, name)) }) },
+        { label: 'New project…', icon: <PlusIcon />, onSelect: () => setAdding(true) },
+        { label: 'New group…', icon: <FolderPlusIcon />, onSelect: () => setPrompt({ title: 'New group', initial: '', onSubmit: (name) => void updateConfig((c) => addGroup(c, name)) }) },
       ],
     });
   };

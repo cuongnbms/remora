@@ -12,7 +12,7 @@ import { startDownload, startUpload } from '../lib/transfer';
 import { dirsToRefresh } from '../lib/tree';
 import type { AppErrorKind, Entry } from '../lib/types';
 import { useStore } from '../store';
-import { ChevronIcon, EyeIcon, EyeOffIcon, FileIcon, FolderIcon } from './icons';
+import { ChevronIcon, CopyIcon, DownloadIcon, EyeIcon, EyeOffIcon, FileIcon, FolderIcon } from './icons';
 
 const HIDDEN = new Set(['.git', 'node_modules']);
 type DirState = Entry[] | { error: string; kind: AppErrorKind | null };
@@ -72,9 +72,10 @@ export function FileTree({ projectId }: { projectId: string }) {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'Download', onSelect: () => void startDownload(projectId, rel) },
-        { label: 'Copy Path', disabled: !project, onSelect: () => project && void copyText(absPath(project, rel), 'path') },
-        { label: 'Copy Relative Path', onSelect: () => void copyText(rel, 'relative path') },
+        { label: 'Copy Path', icon: <CopyIcon />, disabled: !project, onSelect: () => project && void copyText(absPath(project, rel), 'path') },
+        { label: 'Copy Relative Path', icon: <CopyIcon />, onSelect: () => void copyText(rel, 'relative path') },
+        'separator',
+        { label: 'Download', icon: <DownloadIcon />, onSelect: () => void startDownload(projectId, rel) },
       ],
     });
   };
