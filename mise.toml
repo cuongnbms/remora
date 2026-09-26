@@ -25,3 +25,15 @@ run = "cargo test --manifest-path src-tauri/Cargo.toml --test remote -- --test-t
 description = "Produce Remora.app"
 depends = ["install"]
 run = "pnpm tauri build"
+
+[tasks."install:app"]
+description = "Build Remora.app and replace the copy in /Applications"
+depends = ["install"]
+run = """
+set -euo pipefail
+pnpm tauri build --bundles app
+osascript -e 'quit app "Remora"' 2>/dev/null || true
+rm -rf /Applications/Remora.app
+ditto src-tauri/target/release/bundle/macos/Remora.app /Applications/Remora.app
+open /Applications/Remora.app
+"""

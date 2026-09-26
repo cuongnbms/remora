@@ -21,7 +21,7 @@ A small macOS desktop viewer for projects on remote dev boxes and in local folde
 
 ## Develop
 
-Toolchain versions (Node, pnpm, Rust) are pinned in `mise.toml`. With [mise](https://mise.jdx.dev): `mise install`, then `mise run dev | test | test:remote | build`. Without mise:
+Toolchain versions (Node, pnpm, Rust) are pinned in `mise.toml`. With [mise](https://mise.jdx.dev): `mise install`, then `mise run dev | test | test:remote | build | install:app` (`install:app` builds the app and replaces `/Applications/Remora.app`). Without mise:
 
 ```bash
 pnpm install
