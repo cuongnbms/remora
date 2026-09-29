@@ -292,3 +292,52 @@ test('clicking the Bookmarks label collapses and expands the section, and it is 
   expect(useStore.getState().config.bookmarksCollapsed).toBe(false);
   expect(bookmarkRows()).toEqual(['owndevbox']);
 });
+
+const openedRows = () => [...container.querySelectorAll('.opened .project-row')].map((el) => el.textContent);
+
+test('the Opened section is last and shown only once a folder is opened', async () => {
+  expect(container.querySelector('.opened')).toBeNull();
+  await act(async () => {
+    await useStore.getState().openFolders(['/Users/me/tool']);
+  });
+  expect(container.querySelector('.opened-label')?.textContent).toBe('Opened');
+  expect(openedRows()).toEqual(['toollocal']);
+  expect(rows().slice(-2)).toEqual(['group:Home', 'project:toollocal']);
+  const opened = container.querySelector<HTMLElement>('.opened .project-row')!;
+  expect(opened.querySelector('.project-icon svg')?.getAttribute('data-icon')).toBe('folder');
+  expect(opened.hasAttribute('data-row')).toBe(false);
+  expect(opened.className).toContain('active');
+});
+
+test('an opened project moves into a group from its menu, and the section goes away', async () => {
+  await act(async () => {
+    await useStore.getState().openFolders(['/Users/me/tool']);
+  });
+  await contextMenu(container.querySelector<HTMLElement>('.opened .project-row')!);
+  expect(menuItems().filter((l) => l?.startsWith('Move to'))).toEqual(['Move to Work', 'Move to Work / Api', 'Move to Work / Web', 'Move to Home']);
+  await click(menuItem('Move to Home'));
+  expect(groups()[1].projects.map((p) => p.name)).toEqual(['tool']);
+  expect(container.querySelector('.opened')).toBeNull();
+});
+
+test('clicking the Opened label collapses and expands the section, and it is saved', async () => {
+  await act(async () => {
+    await useStore.getState().openFolders(['/Users/me/tool']);
+  });
+  const label = () => container.querySelector<HTMLElement>('.opened-label')!;
+  expect(label().className).toContain('open');
+  await click(label());
+  expect(saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ openedCollapsed: true }));
+  expect(openedRows()).toEqual([]);
+  await click(label());
+  expect(openedRows()).toEqual(['toollocal']);
+});
+
+test('the empty hint is hidden when only opened projects exist', async () => {
+  await act(async () => {
+    useStore.getState().init({ ...config, groups: [], opened: [{ id: 'o1', name: 'tool', host: 'local', path: '/tool' }] }, null);
+    await flush();
+  });
+  expect(container.textContent).not.toContain('No projects yet');
+  expect(openedRows()).toEqual(['toollocal']);
+});

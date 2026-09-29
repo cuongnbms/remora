@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { PromptDialog, type PromptState } from '../components/PromptDialog';
 import { isLocal, location } from '../lib/project';
-import { addGroup, addSubgroup, bookmarks, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleBookmarks, toggleGroup, updateProject } from '../lib/configOps';
+import { addGroup, addSubgroup, bookmarks, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleBookmarks, toggleGroup, toggleOpened, updateProject } from '../lib/configOps';
 import type { Group, Project, ProjectOrder, Subgroup } from '../lib/types';
 import { useStore } from '../store';
 import { AlertIcon, CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, FolderIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, StarIcon, TrashIcon } from '../filepanel/icons';
@@ -206,8 +206,9 @@ export function ProjectSidebar() {
   };
 
   // Bookmark rows (no container) lead with a star and are shortcuts to a project that lives in a group: they neither drag nor
-  // take drops, since they carry no data-row, and the drag marks stay on the project's own row.
-  const projectRows = (projects: Project[], containerId: string | null, sub: boolean) =>
+  // take drops, since they carry no data-row, and the drag marks stay on the project's own row. Opened rows have no container
+  // either (they move into a group from the menu) but lead with a folder like any project.
+  const projectRows = (projects: Project[], containerId: string | null, sub: boolean, star = !containerId) =>
     projects.map((p) => (
       <div
         key={p.id}
@@ -218,7 +219,7 @@ export function ProjectSidebar() {
         onClick={() => selectProject(p.id)}
         onContextMenu={(e) => projectMenu(e, p)}
       >
-        <span className="project-icon">{containerId ? <FolderIcon open={false} /> : <StarIcon />}</span>
+        <span className="project-icon">{star ? <StarIcon /> : <FolderIcon open={false} />}</span>
         <span className="project-name">{p.name}</span>
         {hostBadge(p)}
       </div>
@@ -238,7 +239,7 @@ export function ProjectSidebar() {
         </span>
       </div>
       <div className="sidebar-body">
-        {config.groups.length === 0 && <p className="muted pad">No projects yet. Click + to add one.</p>}
+        {config.groups.length === 0 && !config.opened?.length && <p className="muted pad">No projects yet. Click + to add one.</p>}
         {marked.length > 0 && (
           <section className="bookmarks">
             <div className={'bookmarks-label' + (config.bookmarksCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleBookmarks)}>
@@ -264,6 +265,15 @@ export function ProjectSidebar() {
             )}
           </section>
         ))}
+        {view.opened && view.opened.length > 0 && (
+          <section className="opened">
+            <div className={'opened-label' + (config.openedCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleOpened)}>
+              <ChevronIcon />
+              Opened
+            </div>
+            {!config.openedCollapsed && projectRows(view.opened, null, false, false)}
+          </section>
+        )}
       </div>
       <div className="sidebar-footer">
         <button className="icon-btn" title="Settings (⌘,)" aria-label="Settings" onClick={() => useStore.getState().setSettingsOpen(true)}>
