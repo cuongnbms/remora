@@ -70,13 +70,14 @@ duplicate-id check, ⌘P, ⌘1…9 (bookmarks, then groups, then Opened) and boo
 
 - `lib.rs` switches from `.run(generate_context!())` to `.build(...)` + `.run(|app, event| …)`.
 - On `RunEvent::Opened { urls }` (macOS): a pure function turns `file://` URLs into paths and
-  keeps only existing directories. Each is pushed onto `AppState.pending_opens:
-  Mutex<Vec<String>>`, an `open-folders` event carries them to the frontend, and the main window
-  is shown and focused.
-- New command `take_pending_opens() -> Vec<String>` returns and clears the queue.
-- The frontend subscribes to `open-folders` first, then calls `take_pending_opens` once the
-  config is loaded, so a folder that arrives while the app is still starting is not lost. Handling
-  the same path twice is harmless: the second time just selects it.
+  keeps only existing directories. They are pushed onto a pending queue (managed on the builder,
+  so it exists before `setup` runs), an `open-folders` event (no payload) tells the frontend to
+  collect them, and the main window is shown and focused.
+- New command `take_pending_opens() -> Vec<String>` returns and clears the queue. It is the only
+  way paths reach the frontend, so none is handled twice.
+- Once the config is loaded, the frontend subscribes to `open-folders` and calls
+  `take_pending_opens` once right away, so a folder that arrived while the app was still starting
+  is not lost.
 - For each path the frontend applies `openLocalFolder` through `updateConfig`, then selects the
   returned id.
 
