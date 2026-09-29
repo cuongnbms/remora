@@ -1,3 +1,4 @@
+pub mod cli_open;
 pub mod config;
 pub mod error;
 pub mod fonts;
@@ -216,6 +217,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(cli_open::PendingOpens::default())
         .setup(|app| {
             let handle = app.handle().clone();
             let status_sink: StatusSink = Arc::new(move |status| {
@@ -251,8 +253,17 @@ pub fn run() {
             download,
             watch_project,
             unwatch,
-            host_statuses
+            host_statuses,
+            cli_open::take_pending_opens
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Remora");
+        .build(tauri::generate_context!())
+        .expect("error while building Remora")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                cli_open::receive(app, &urls);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
