@@ -239,7 +239,10 @@ export function ProjectSidebar() {
         {config.groups.length === 0 && <p className="muted pad">No projects yet. Click + to add one.</p>}
         {marked.length > 0 && (
           <section className="bookmarks">
-            <div className="bookmarks-label">Bookmarks</div>
+            <div className="bookmarks-label">
+              <StarIcon />
+              Bookmarks
+            </div>
             {projectRows(marked, null, false)}
           </section>
         )}

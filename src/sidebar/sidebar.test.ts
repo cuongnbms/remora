@@ -223,6 +223,7 @@ test('the Bookmarks section is hidden until a project is bookmarked', async () =
   await click(menuItem('Bookmark'));
   expect(useStore.getState().config.groups[0].projects[0].bookmarked).toBe(true);
   expect(container.querySelector('.bookmarks-label')?.textContent).toBe('Bookmarks');
+  expect(container.querySelector('.bookmarks-label svg')?.getAttribute('data-icon')).toBe('star');
   expect(bookmarkRows()).toEqual(['owndevbox']);
   // The project stays in its group too.
   expect(rows()).toEqual(['project:owndevbox', 'group:Work', 'sub:Api', 'project:apidevbox', 'sub:Web', 'project:owndevbox', 'group:Home']);
