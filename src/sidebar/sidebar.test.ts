@@ -295,12 +295,15 @@ test('clicking the Bookmarks label collapses and expands the section, and it is 
 
 const openedRows = () => [...container.querySelectorAll('.opened .project-row')].map((el) => el.textContent);
 
-test('the Opened section is last and shown only once a folder is opened', async () => {
+test('the Recently opened section is pinned at the bottom and shown only once a folder is opened', async () => {
   expect(container.querySelector('.opened')).toBeNull();
   await act(async () => {
     await useStore.getState().openFolders(['/Users/me/tool']);
   });
-  expect(container.querySelector('.opened-label')?.textContent).toBe('Opened');
+  expect(container.querySelector('.opened-label')?.textContent).toBe('Recently opened');
+  // Pinned below the scrolling groups, above the footer.
+  expect(container.querySelector('.sidebar-body .opened')).toBeNull();
+  expect(container.querySelector('.opened')?.nextElementSibling?.className).toBe('sidebar-footer');
   expect(openedRows()).toEqual(['toollocal']);
   expect(rows().slice(-2)).toEqual(['group:Home', 'project:toollocal']);
   const opened = container.querySelector<HTMLElement>('.opened .project-row')!;

@@ -40,7 +40,7 @@ pnpm tauri build        # produce Remora.app
 
 ## Command line
 
-`remora` opens the current folder in Remora, `remora <folder>` any local folder, like VS Code's `code .`. A folder that is already a local project is selected; any other one is added to **Opened** at the bottom of the sidebar, where it stays until you right-click it and pick **Move to …** (to keep it in a group) or **Remove**.
+`remora` opens the current folder in Remora, `remora <folder>` any local folder, like VS Code's `code .`. A folder that is already a local project is selected; any other one is added to **Recently opened**, pinned at the bottom of the sidebar below the groups, where it stays until you right-click it and pick **Move to …** (to keep it in a group) or **Remove**.
 
 `mise run install:app` links the command into `~/.local/bin` (which must be on your `PATH`). Without mise:
 

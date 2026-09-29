@@ -25,7 +25,7 @@ removes it or moves it into a group.
 | Folder already in Opened? | Select it and move it to the top of Opened. |
 | How is `remora` installed? | Shell script bundled in `Remora.app`; `mise run install:app` symlinks it into `~/.local/bin`. |
 | How does the path reach the app? | macOS "open documents" Apple Event: the script runs `open -a Remora <dir>`, Rust receives `RunEvent::Opened`. No new plugin, no URL scheme. |
-| Where is the section? | Last in the sidebar, after every group. |
+| Where is the section? | Pinned at the bottom of the sidebar, apart from the groups, labelled **Recently opened**. |
 
 Rejected: a `remora://` URL scheme via `tauri-plugin-deep-link` (only needed for remote paths,
 and any web page could invoke it); the single-instance plugin with argv (arguments from `open`
@@ -58,8 +58,10 @@ duplicate-id check, ⌘P, ⌘1…9 (bookmarks, then groups, then Opened) and boo
 
 ## Sidebar
 
-- An **Opened** section after the last group, shown only when `opened` is not empty.
-  Its label collapses it like Bookmarks does (chevron, `openedCollapsed`).
+- A **Recently opened** section apart from the groups: outside the scrolling group list, pinned
+  above the sidebar footer with a top border, scrolling on its own past 40% of the sidebar height.
+  Shown only when `opened` is not empty. Its label collapses it like Bookmarks does (chevron,
+  `openedCollapsed`).
 - Rows lead with a folder icon and show the host badge, like group rows.
 - Right-click shows the existing project menu: Bookmark, Rename…, Edit path…, Move to *each
   group*, Remove. "Move to …" is how an opened project is kept in a group.

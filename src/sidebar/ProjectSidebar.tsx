@@ -265,16 +265,17 @@ export function ProjectSidebar() {
             )}
           </section>
         ))}
-        {view.opened && view.opened.length > 0 && (
-          <section className="opened">
-            <div className={'opened-label' + (config.openedCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleOpened)}>
-              <ChevronIcon />
-              Opened
-            </div>
-            {!config.openedCollapsed && projectRows(view.opened, null, false, false)}
-          </section>
-        )}
       </div>
+      {/* Folders opened from the command line sit apart from the groups, pinned above the footer. */}
+      {view.opened && view.opened.length > 0 && (
+        <section className="opened">
+          <div className={'opened-label' + (config.openedCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleOpened)}>
+            <ChevronIcon />
+            Recently opened
+          </div>
+          {!config.openedCollapsed && projectRows(view.opened, null, false, false)}
+        </section>
+      )}
       <div className="sidebar-footer">
         <button className="icon-btn" title="Settings (⌘,)" aria-label="Settings" onClick={() => useStore.getState().setSettingsOpen(true)}>
           <GearIcon />
