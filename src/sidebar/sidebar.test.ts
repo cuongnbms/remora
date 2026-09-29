@@ -212,3 +212,50 @@ test('project rows lead with a folder icon, local or remote', async () => {
   expect(icon('own')).toBe('folder');
   expect(icon('api')).toBe('folder');
 });
+
+const menuItem = (label: string) => [...document.querySelectorAll<HTMLElement>('.context-menu li')].find((li) => li.textContent === label)!;
+const bookmarkRows = () => [...container.querySelectorAll('.bookmarks .project-row')].map((el) => el.textContent);
+
+test('the Bookmarks section is hidden until a project is bookmarked', async () => {
+  expect(container.querySelector('.bookmarks')).toBeNull();
+  await contextMenu(row('own'));
+  expect(menuItem('Bookmark').querySelector('.menu-icon svg')?.getAttribute('data-icon')).toBe('star');
+  await click(menuItem('Bookmark'));
+  expect(useStore.getState().config.groups[0].projects[0].bookmarked).toBe(true);
+  expect(container.querySelector('.bookmarks-label')?.textContent).toBe('Bookmarks');
+  expect(bookmarkRows()).toEqual(['owndevbox']);
+  // The project stays in its group too.
+  expect(rows()).toEqual(['project:owndevbox', 'group:Work', 'sub:Api', 'project:apidevbox', 'sub:Web', 'project:owndevbox', 'group:Home']);
+});
+
+test('bookmarks follow sidebar order, including projects of collapsed subgroups', async () => {
+  await act(async () => {
+    await useStore.getState().updateConfig((c) => updateProject(updateProject(c, 'p1', { bookmarked: true }), 'p3', { bookmarked: true }));
+  });
+  expect(bookmarkRows()).toEqual(['webdevbox', 'owndevbox']);
+});
+
+test('a bookmark row selects its project, highlights with it, and can remove the bookmark', async () => {
+  await act(async () => {
+    await useStore.getState().updateConfig((c) => updateProject(c, 'p2', { bookmarked: true }));
+  });
+  const bookmark = container.querySelector<HTMLElement>('.bookmarks .project-row')!;
+  await click(bookmark);
+  expect(useStore.getState().activeProjectId).toBe('p2');
+  expect(container.querySelectorAll('.project-row.active')).toHaveLength(2);
+  await contextMenu(bookmark);
+  expect(menuItems()).toContain('Remove bookmark');
+  expect(menuItems()).not.toContain('Bookmark');
+  await click(menuItem('Remove bookmark'));
+  expect(useStore.getState().config.groups[0].subgroups[0].projects[0].bookmarked).toBe(false);
+  expect(container.querySelector('.bookmarks')).toBeNull();
+});
+
+test('bookmark rows do not drag', async () => {
+  await act(async () => {
+    await useStore.getState().updateConfig((c) => updateProject(c, 'p2', { bookmarked: true }));
+  });
+  await dragTo(container.querySelector<HTMLElement>('.bookmarks .project-row')!, row('Home'), 'bottom');
+  expect(groups()[1].projects).toEqual([]);
+  expect(groups()[0].subgroups[0].projects.map((p) => p.id)).toEqual(['p2']);
+});

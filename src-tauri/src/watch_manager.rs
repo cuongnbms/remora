@@ -198,6 +198,7 @@ mod tests {
             name: "local".into(),
             host: crate::local_fs::LOCAL_HOST.into(),
             path: dir.path().to_str().unwrap().into(),
+            bookmarked: false,
         };
         let (tx, mut rx) = mpsc::unbounded_channel::<(String, Vec<Change>)>();
         let sink: ChangeSink = Arc::new(move |id, changes| {

@@ -12,6 +12,10 @@ export function newId(): string {
 export const flatProjects = (c: Config): Project[] =>
   c.groups.flatMap((g) => [...g.subgroups.flatMap((s) => s.projects), ...g.projects]);
 export const findProject = (c: Config, id: string): Project | undefined => flatProjects(c).find((p) => p.id === id);
+/** Bookmarked projects, in the order of `c` (pass the sidebar view to match what the sidebar shows). */
+export const bookmarks = (c: Config): Project[] => flatProjects(c).filter((p) => p.bookmarked);
+/** Projects as numbered by ⌘1…9: bookmarks first, then the rest in sidebar order, each once. */
+export const shortcutProjects = (c: Config): Project[] => [...bookmarks(c), ...flatProjects(c).filter((p) => !p.bookmarked)];
 
 /** Every place a project can live (groups and subgroups), with a "Group / Subgroup" label. */
 export const containers = (c: Config): { id: string; label: string; container: Subgroup }[] =>

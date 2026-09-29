@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Config } from './types';
-import { addGroup, addProject, addProjects, addSubgroup, containers, findProject, flatProjects, moveGroup, moveProject, moveSubgroup, removeGroup, removeProject, renameGroup, sidebarView, sortByName, toggleGroup, updateProject } from './configOps';
+import { addGroup, addProject, addProjects, addSubgroup, bookmarks, containers, findProject, flatProjects, moveGroup, moveProject, moveSubgroup, removeGroup, removeProject, renameGroup, shortcutProjects, sidebarView, sortByName, toggleGroup, updateProject } from './configOps';
 import { DEFAULT_SETTINGS } from './settings';
 
 const base: Config = {
@@ -186,4 +186,25 @@ test('sidebarView follows the projectOrder setting', () => {
   expect(sidebarView(ordered)).toBe(ordered);
   const byName = { ...ordered, settings: { ...ordered.settings, projectOrder: 'name' as const } };
   expect(ids(sidebarView(byName).groups)).toEqual(['g3', 'g2', 'g1']);
+});
+
+const marked = (c: Config, ...idsToMark: string[]) => idsToMark.reduce((acc, id) => updateProject(acc, id, { bookmarked: true }), c);
+
+test('bookmarks lists bookmarked projects in the order of the config it is given', () => {
+  expect(bookmarks(ordered)).toEqual([]);
+  const c = marked(ordered, 'p1', 'p6', 'p2');
+  expect(ids(bookmarks(c))).toEqual(['p6', 'p1', 'p2']);
+  const byName = { ...c, settings: { ...c.settings, projectOrder: 'name' as const } };
+  expect(ids(bookmarks(sidebarView(byName)))).toEqual(['p6', 'p2', 'p1']);
+});
+
+test('removing a bookmark or its project drops it from bookmarks', () => {
+  const c = marked(ordered, 'p1', 'p2');
+  expect(ids(bookmarks(updateProject(c, 'p1', { bookmarked: false })))).toEqual(['p2']);
+  expect(ids(bookmarks(removeProject(c, 'p2')))).toEqual(['p1']);
+});
+
+test('shortcutProjects puts bookmarks first and lists each project once', () => {
+  expect(ids(shortcutProjects(ordered))).toEqual(ids(flatProjects(ordered)));
+  expect(ids(shortcutProjects(marked(ordered, 'p3', 'p5')))).toEqual(['p5', 'p3', 'p6', 'p1', 'p2', 'p4']);
 });

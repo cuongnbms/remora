@@ -16,6 +16,9 @@ pub struct Project {
     pub name: String,
     pub host: String,
     pub path: String,
+    /// Also listed in the sidebar's Bookmarks section. Left out of the JSON when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bookmarked: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -293,6 +296,7 @@ mod tests {
                     name: "my-repo".into(),
                     host: "devbox".into(),
                     path: "/home/me/my-repo".into(),
+                    bookmarked: false,
                 }],
                 subgroups: vec![],
             }],
@@ -425,6 +429,7 @@ mod tests {
                 name: "api".into(),
                 host: "devbox".into(),
                 path: "/home/me/api".into(),
+                bookmarked: false,
             }],
         });
         cfg
@@ -579,5 +584,16 @@ mod tests {
         let json = serde_json::to_string(&sample()).unwrap();
         assert!(json.contains(r#""collapsed":false"#));
         assert!(json.contains(r#""projects":["#));
+    }
+
+    #[test]
+    fn bookmarked_defaults_to_false_and_is_written_only_when_set() {
+        let json = r#"{"id":"p","name":"n","host":"devbox","path":"/p"}"#;
+        let p: Project = serde_json::from_str(json).unwrap();
+        assert!(!p.bookmarked);
+        assert!(!serde_json::to_string(&p).unwrap().contains("bookmarked"));
+        let marked = Project { bookmarked: true, ..p };
+        let back: Project = serde_json::from_str(&serde_json::to_string(&marked).unwrap()).unwrap();
+        assert!(back.bookmarked);
     }
 }

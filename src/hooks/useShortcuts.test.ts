@@ -182,6 +182,18 @@ describe('useShortcuts', () => {
     expect(useStore.getState().activeProjectId).toBe('p1');
   });
 
+  test('cmd+digit counts bookmarked projects first', async () => {
+    const [g] = config.groups;
+    const p2 = { ...g.projects[1], bookmarked: true };
+    useStore.setState({ config: { ...config, groups: [{ ...g, projects: [g.projects[0], p2] }] } });
+    await render({ toggleLeft: left, toggleRight: right });
+    await press({ code: 'Digit1' });
+    expect(useStore.getState().activeProjectId).toBe('p2');
+
+    await press({ code: 'Digit2' });
+    expect(useStore.getState().activeProjectId).toBe('p1');
+  });
+
   test('only handled shortcuts prevent the default browser action', async () => {
     await render({ toggleLeft: left, toggleRight: right });
     expect(prevented({ code: 'KeyP' })).toBe(true);

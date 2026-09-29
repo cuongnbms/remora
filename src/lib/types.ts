@@ -1,4 +1,5 @@
-export type Project = { id: string; name: string; host: string; path: string };
+/** `bookmarked` projects are also listed in the sidebar's Bookmarks section; absent means false. */
+export type Project = { id: string; name: string; host: string; path: string; bookmarked?: boolean };
 /** A group nested inside a top-level group; it cannot hold further subgroups. */
 export type Subgroup = { id: string; name: string; collapsed: boolean; projects: Project[] };
 export type Group = Subgroup & { subgroups: Subgroup[] };

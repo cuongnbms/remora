@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { PromptDialog, type PromptState } from '../components/PromptDialog';
 import { isLocal, location } from '../lib/project';
-import { addGroup, addSubgroup, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleGroup, updateProject } from '../lib/configOps';
+import { addGroup, addSubgroup, bookmarks, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleGroup, updateProject } from '../lib/configOps';
 import type { Group, Project, ProjectOrder, Subgroup } from '../lib/types';
 import { useStore } from '../store';
-import { AlertIcon, CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, FolderIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, TrashIcon } from '../filepanel/icons';
+import { AlertIcon, CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, FolderIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, StarIcon, TrashIcon } from '../filepanel/icons';
 import { AddProjectDialog } from './AddProjectDialog';
 import { resolveDrop, type DragItem, type Drop } from './drag';
 
@@ -26,6 +26,7 @@ export function ProjectSidebar() {
   const { updateConfig, selectProject } = useStore.getState();
   const order = config.settings.projectOrder;
   const view = sidebarView(config);
+  const marked = bookmarks(view);
 
   useEffect(() => () => endDrag.current?.(), []);
 
@@ -117,6 +118,11 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
+        {
+          label: p.bookmarked ? 'Remove bookmark' : 'Bookmark',
+          icon: <StarIcon />,
+          onSelect: () => void updateConfig((c) => updateProject(c, p.id, { bookmarked: !p.bookmarked })),
+        },
         { label: 'Rename…', icon: <PencilIcon />, onSelect: () => setPrompt({ title: 'Rename project', initial: p.name, onSubmit: (name) => void updateConfig((c) => updateProject(c, p.id, { name })) }) },
         { label: 'Edit path…', icon: <FolderPenIcon />, onSelect: () => editPath(p) },
         ...otherGroups.map((x) => ({ label: `Move to ${x.label}`, icon: <FolderInputIcon />, onSelect: () => void updateConfig((c) => moveProject(c, p.id, x.id)) })),
@@ -197,16 +203,16 @@ export function ProjectSidebar() {
     );
   };
 
-  const projectRows = (projects: Project[], containerId: string, sub: boolean) =>
+  // Bookmark rows (no container) are shortcuts to a project that lives in a group: they neither drag nor
+  // take drops, since they carry no data-row, and the drag marks stay on the project's own row.
+  const projectRows = (projects: Project[], containerId: string | null, sub: boolean) =>
     projects.map((p) => (
       <div
         key={p.id}
-        className={'project-row' + (sub ? ' nested' : '') + (p.id === activeId ? ' active' : '') + dragClass(p.id, 'row')}
+        className={'project-row' + (sub ? ' nested' : '') + (p.id === activeId ? ' active' : '') + (containerId ? dragClass(p.id, 'row') : '')}
         title={location(p)}
-        data-row="project"
-        data-id={p.id}
-        data-container={containerId}
-        onPointerDown={(e) => startDrag(e, { kind: 'project', id: p.id })}
+        {...(containerId && { 'data-row': 'project', 'data-id': p.id, 'data-container': containerId })}
+        onPointerDown={containerId ? (e) => startDrag(e, { kind: 'project', id: p.id }) : undefined}
         onClick={() => selectProject(p.id)}
         onContextMenu={(e) => projectMenu(e, p)}
       >
@@ -231,6 +237,12 @@ export function ProjectSidebar() {
       </div>
       <div className="sidebar-body">
         {config.groups.length === 0 && <p className="muted pad">No projects yet. Click + to add one.</p>}
+        {marked.length > 0 && (
+          <section className="bookmarks">
+            <div className="bookmarks-label">Bookmarks</div>
+            {projectRows(marked, null, false)}
+          </section>
+        )}
         {view.groups.map((g) => (
           <section key={g.id} data-group={g.id} className={dragClass(g.id, 'section').trim() || undefined}>
             {groupRow(g, false)}

@@ -4,6 +4,7 @@
 - **Project**: a directory on a host, identified by `host` + an absolute `path`, with a display name. Every path in the app is relative to the project root.
 - **Local project**: a project whose `host` is `local`: a directory on the Mac itself, read directly from the filesystem, not over SSH. This is why an SSH alias named `local` can't be used.
 - **Group**: a group of projects in the left sidebar, for display organization only. A group can also hold subgroups.
+- **Bookmark**: a mark on a project that also lists it in the Bookmarks section at the top of the sidebar, in sidebar order; the project stays in its group. ⌘1…9 counts bookmarked projects first. _Avoid_: "favorite", "pin".
 - **Subgroup**: a group nested one level inside a group (Group → Subgroup → Project); subgroups cannot nest further. In the sidebar a group's subgroups come before its own projects.
 - **Watcher**: the file-change watch session for the selected project (remote: inotify if available, polling otherwise; local: FSEvents).
 - **Transfer**: copying a file/folder between the Mac and a project, in two directions: Upload and Download. Never overwrites: a name clash is renamed Finder-style (`a (1).md`).
