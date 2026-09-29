@@ -124,6 +124,9 @@ export function toggleGroup(c: Config, groupId: string): Config {
   return mapContainers(c, (x) => (x.id === groupId ? { ...x, collapsed: !x.collapsed } : x));
 }
 
+/** Collapses or expands the Bookmarks section. */
+export const toggleBookmarks = (c: Config): Config => ({ ...c, bookmarksCollapsed: !c.bookmarksCollapsed });
+
 /** Removes an empty group or subgroup; a group holding subgroups is not empty. */
 export function removeGroup(c: Config, groupId: string): Config {
   if (findContainer(c, groupId)?.projects.length || c.groups.find((g) => g.id === groupId)?.subgroups.length) {

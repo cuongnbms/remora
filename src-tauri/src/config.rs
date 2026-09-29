@@ -109,6 +109,9 @@ pub struct Config {
     pub groups: Vec<Group>,
     #[serde(default)]
     pub settings: Settings,
+    /// The sidebar's Bookmarks section is folded. Left out of the JSON when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bookmarks_collapsed: bool,
 }
 
 impl Default for Config {
@@ -117,6 +120,7 @@ impl Default for Config {
             version: 1,
             groups: Vec::new(),
             settings: Settings::default(),
+            bookmarks_collapsed: false,
         }
     }
 }
@@ -301,6 +305,7 @@ mod tests {
                 subgroups: vec![],
             }],
             settings: Settings::default(),
+            bookmarks_collapsed: false,
         }
     }
 
@@ -595,5 +600,16 @@ mod tests {
         let marked = Project { bookmarked: true, ..p };
         let back: Project = serde_json::from_str(&serde_json::to_string(&marked).unwrap()).unwrap();
         assert!(back.bookmarked);
+    }
+
+    #[test]
+    fn bookmarks_collapsed_defaults_to_false_and_is_written_only_when_set() {
+        let c: Config = serde_json::from_str(r#"{"version":1}"#).unwrap();
+        assert!(!c.bookmarks_collapsed);
+        assert!(!serde_json::to_string(&c).unwrap().contains("bookmarksCollapsed"));
+        let folded = Config { bookmarks_collapsed: true, ..c };
+        let json = serde_json::to_string(&folded).unwrap();
+        assert!(json.contains(r#""bookmarksCollapsed":true"#));
+        assert!(serde_json::from_str::<Config>(&json).unwrap().bookmarks_collapsed);
     }
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ContextMenu, type MenuState } from '../components/ContextMenu';
 import { PromptDialog, type PromptState } from '../components/PromptDialog';
 import { isLocal, location } from '../lib/project';
-import { addGroup, addSubgroup, bookmarks, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleGroup, updateProject } from '../lib/configOps';
+import { addGroup, addSubgroup, bookmarks, containers, findProject, moveProject, removeGroup, removeProject, renameGroup, sidebarView, toggleBookmarks, toggleGroup, updateProject } from '../lib/configOps';
 import type { Group, Project, ProjectOrder, Subgroup } from '../lib/types';
 import { useStore } from '../store';
 import { AlertIcon, CheckIcon, ChevronIcon, FolderInputIcon, FolderPenIcon, FolderPlusIcon, FolderIcon, GearIcon, PencilIcon, PlusIcon, SortIcon, StarIcon, TrashIcon } from '../filepanel/icons';
@@ -239,11 +239,12 @@ export function ProjectSidebar() {
         {config.groups.length === 0 && <p className="muted pad">No projects yet. Click + to add one.</p>}
         {marked.length > 0 && (
           <section className="bookmarks">
-            <div className="bookmarks-label">
+            <div className={'bookmarks-label' + (config.bookmarksCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleBookmarks)}>
+              <ChevronIcon />
               <StarIcon />
               Bookmarks
             </div>
-            {projectRows(marked, null, false)}
+            {!config.bookmarksCollapsed && projectRows(marked, null, false)}
           </section>
         )}
         {view.groups.map((g) => (

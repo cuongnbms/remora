@@ -223,7 +223,7 @@ test('the Bookmarks section is hidden until a project is bookmarked', async () =
   await click(menuItem('Bookmark'));
   expect(useStore.getState().config.groups[0].projects[0].bookmarked).toBe(true);
   expect(container.querySelector('.bookmarks-label')?.textContent).toBe('Bookmarks');
-  expect(container.querySelector('.bookmarks-label svg')?.getAttribute('data-icon')).toBe('star');
+  expect(container.querySelector('.bookmarks-label [data-icon="star"]')).not.toBeNull();
   expect(bookmarkRows()).toEqual(['owndevbox']);
   // The project stays in its group too.
   expect(rows()).toEqual(['project:owndevbox', 'group:Work', 'sub:Api', 'project:apidevbox', 'sub:Web', 'project:owndevbox', 'group:Home']);
@@ -259,4 +259,21 @@ test('bookmark rows do not drag', async () => {
   await dragTo(container.querySelector<HTMLElement>('.bookmarks .project-row')!, row('Home'), 'bottom');
   expect(groups()[1].projects).toEqual([]);
   expect(groups()[0].subgroups[0].projects.map((p) => p.id)).toEqual(['p2']);
+});
+
+test('clicking the Bookmarks label collapses and expands the section, and it is saved', async () => {
+  await act(async () => {
+    await useStore.getState().updateConfig((c) => updateProject(c, 'p1', { bookmarked: true }));
+  });
+  const label = () => container.querySelector<HTMLElement>('.bookmarks-label')!;
+  expect(label().querySelector('svg')?.getAttribute('data-icon')).toBe('chevron');
+  expect(label().className).toContain('open');
+  await click(label());
+  expect(useStore.getState().config.bookmarksCollapsed).toBe(true);
+  expect(saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ bookmarksCollapsed: true }));
+  expect(bookmarkRows()).toEqual([]);
+  expect(label().className).not.toContain('open');
+  await click(label());
+  expect(useStore.getState().config.bookmarksCollapsed).toBe(false);
+  expect(bookmarkRows()).toEqual(['owndevbox']);
 });
