@@ -475,3 +475,43 @@ describe('misc state', () => {
     expect(useStore.getState().toast).toBeNull();
   });
 });
+
+describe('openFolders', () => {
+  const localConfig: Config = {
+    ...config,
+    groups: [{ ...config.groups[0], projects: [{ id: 'p1', name: 'P1', host: 'local', path: '/x' }] }],
+  };
+
+  test('adds a new folder to Opened, saves and selects it', async () => {
+    useStore.getState().init(localConfig, null);
+    await useStore.getState().openFolders(['/Users/me/foo/']);
+    const opened = useStore.getState().config.opened!;
+    expect(opened).toMatchObject([{ name: 'foo', host: 'local', path: '/Users/me/foo' }]);
+    expect(useStore.getState().activeProjectId).toBe(opened[0].id);
+    expect(api.saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ opened }));
+  });
+
+  test('selects a local project already in a group without saving', async () => {
+    useStore.getState().init(localConfig, null);
+    await useStore.getState().openFolders(['/x']);
+    expect(useStore.getState().activeProjectId).toBe('p1');
+    expect(useStore.getState().config.opened).toBeUndefined();
+    expect(api.saveConfig).not.toHaveBeenCalled();
+  });
+
+  test('with several folders, all are added and the last one is selected', async () => {
+    useStore.getState().init(localConfig, null);
+    await useStore.getState().openFolders(['/a', '/b']);
+    const opened = useStore.getState().config.opened!;
+    expect(opened.map((p) => p.name)).toEqual(['b', 'a']);
+    expect(useStore.getState().activeProjectId).toBe(opened[0].id);
+  });
+
+  test('selects nothing when the save fails', async () => {
+    useStore.getState().init(localConfig, null);
+    vi.mocked(api.saveConfig).mockRejectedValueOnce(new Error('disk full'));
+    await useStore.getState().openFolders(['/z']);
+    expect(useStore.getState().activeProjectId).toBeNull();
+    expect(useStore.getState().config.opened).toBeUndefined();
+  });
+});

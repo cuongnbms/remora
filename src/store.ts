@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api, errorMessage } from './lib/api';
-import { findProject } from './lib/configOps';
+import { findProject, openLocalFolder } from './lib/configOps';
 import type { Change, Config, HostStatus, Settings } from './lib/types';
 import { DEFAULT_SETTINGS } from './lib/settings';
 
@@ -65,6 +65,8 @@ type State = {
   updateConfig(fn: (c: Config) => Config): Promise<void>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
   selectProject(id: string | null): void;
+  /** Opens folders sent from the command line, in order: each lands on its project (see `openLocalFolder`) and is selected once saved. */
+  openFolders(paths: string[]): Promise<void>;
   openFile(path: string, hash?: string, opts?: { pin?: boolean }): void;
   pinTab(path: string): void;
   closeTab(path: string): void;
@@ -169,6 +171,25 @@ export const useStore = create<State>((set, get) => {
 
     selectProject(id) {
       set({ activeProjectId: id });
+    },
+
+    async openFolders(paths) {
+      for (const path of paths) {
+        const found = openLocalFolder(get().config, path);
+        // Already a project in a group: nothing to save.
+        if (found.config === get().config) {
+          get().selectProject(found.id);
+          continue;
+        }
+        let id = found.id;
+        // Recomputed inside so the change applies to whatever config the queued update sees.
+        await get().updateConfig((c) => {
+          const r = openLocalFolder(c, path);
+          id = r.id;
+          return r.config;
+        });
+        if (findProject(get().config, id)) get().selectProject(id);
+      }
     },
 
     openFile(path, hash, opts) {

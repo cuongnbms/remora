@@ -19,6 +19,8 @@ export const api = {
   watchProject: (projectId: string) => invoke<void>('watch_project', { projectId }),
   unwatch: () => invoke<void>('unwatch'),
   hostStatuses: () => invoke<HostStatus[]>('host_statuses'),
+  /** Folders sent from the command line since the last call. */
+  takePendingOpens: () => invoke<string[]>('take_pending_opens'),
 };
 
 export function onFsChanged(cb: (p: { projectId: string; changes: Change[] }) => void): Promise<UnlistenFn> {
@@ -27,6 +29,11 @@ export function onFsChanged(cb: (p: { projectId: string; changes: Change[] }) =>
 
 export function onHostStatus(cb: (s: HostStatus) => void): Promise<UnlistenFn> {
   return listen<HostStatus>('host-status', (e) => cb(e.payload));
+}
+
+/** Fires when folders sent from the command line are waiting in `takePendingOpens`. */
+export function onOpenFolders(cb: () => void): Promise<UnlistenFn> {
+  return listen('open-folders', () => cb());
 }
 
 export function errorMessage(e: unknown): string {

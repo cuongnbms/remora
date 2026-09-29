@@ -6,6 +6,7 @@ import { QuickOpen } from './components/QuickOpen';
 import { TitleBar } from './components/TitleBar';
 import { FilePanel } from './filepanel/FilePanel';
 import { useBackendEvents } from './hooks/useBackendEvents';
+import { useOpenFolders } from './hooks/useOpenFolders';
 import { useShortcuts } from './hooks/useShortcuts';
 import { api, errorMessage } from './lib/api';
 import { findProject } from './lib/configOps';
@@ -40,6 +41,7 @@ export default function App() {
   const toggleRight = () => togglePanel(right);
 
   useBackendEvents();
+  useOpenFolders(ready);
   useShortcuts({ toggleLeft, toggleRight });
 
   useEffect(() => {
