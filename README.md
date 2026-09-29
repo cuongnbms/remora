@@ -38,6 +38,18 @@ pnpm tauri build        # produce Remora.app
 - **Download**: right-click a file or folder → **Download**. It is saved in `~/Downloads` (renamed the same way if needed); the toast's **Show in Finder** reveals it.
 - Remote transfers stream `tar` over the same ssh connection, so the host needs `tar` (standard on Linux). Folders are copied as they are, including `node_modules` or `.git` if you drop them.
 
+## Command line
+
+`remora` opens the current folder in Remora, `remora <folder>` any local folder, like VS Code's `code .`. A folder that is already a local project is selected; any other one is added to **Opened** at the bottom of the sidebar, where it stays until you right-click it and pick **Move to …** (to keep it in a group) or **Remove**.
+
+`mise run install:app` links the command into `~/.local/bin` (which must be on your `PATH`). Without mise:
+
+```sh
+ln -sf /Applications/Remora.app/Contents/Resources/bin/remora ~/.local/bin/remora
+```
+
+It always opens the installed app, never a `pnpm tauri dev` build.
+
 ## Shortcuts
 
 | Keys | Action |

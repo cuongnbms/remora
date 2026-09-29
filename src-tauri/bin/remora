@@ -1,0 +1,13 @@
+#!/bin/sh
+# Open a folder in Remora, like `code .`: remora [folder]   (default: the current folder)
+set -eu
+if [ "$#" -gt 1 ]; then
+  echo "usage: remora [folder]" >&2
+  exit 2
+fi
+dir=${1:-.}
+if [ ! -d "$dir" ]; then
+  echo "remora: not a folder: $dir" >&2
+  exit 1
+fi
+exec open -a Remora "$(cd "$dir" && pwd -P)"

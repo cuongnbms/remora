@@ -27,7 +27,7 @@ depends = ["install"]
 run = "pnpm tauri build"
 
 [tasks."install:app"]
-description = "Build Remora.app and replace the copy in /Applications"
+description = "Build Remora.app, replace the copy in /Applications and link the remora command into ~/.local/bin"
 depends = ["install"]
 run = """
 set -euo pipefail
@@ -35,5 +35,7 @@ pnpm tauri build --bundles app
 osascript -e 'quit app "Remora"' 2>/dev/null || true
 rm -rf /Applications/Remora.app
 ditto src-tauri/target/release/bundle/macos/Remora.app /Applications/Remora.app
+mkdir -p ~/.local/bin
+ln -sf /Applications/Remora.app/Contents/Resources/bin/remora ~/.local/bin/remora
 open /Applications/Remora.app
 """
