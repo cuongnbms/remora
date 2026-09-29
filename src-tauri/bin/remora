@@ -10,4 +10,21 @@ if [ ! -d "$dir" ]; then
   echo "remora: not a folder: $dir" >&2
   exit 1
 fi
-exec open -a Remora "$(cd "$dir" && pwd -P)"
+# Open the bundle this script ships in (Contents/Resources/bin/remora), found through the
+# ~/.local/bin symlink, so a stale build elsewhere is never picked by name.
+self=$0
+while [ -L "$self" ]; do
+  link=$(readlink "$self")
+  case $link in
+    /*) self=$link ;;
+    *) self=$(dirname "$self")/$link ;;
+  esac
+done
+app=$(CDPATH= cd -- "$(dirname "$self")/../../.." && pwd -P)
+case $app in
+  *.app) ;;
+  *) app=Remora ;;
+esac
+# The logical path (symlinks kept), as the user reached it: that is how projects are stored.
+target=$(CDPATH= cd -- "$dir" && pwd)
+exec open -a "$app" "$target"

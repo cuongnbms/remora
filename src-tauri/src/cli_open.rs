@@ -1,8 +1,12 @@
 //! Folders handed to the app by macOS (`open -a Remora <dir>`, which the `remora` command runs).
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager, State, Url};
+
+use crate::local_fs::is_local;
+use crate::AppState;
 
 /// Folders received but not yet taken by the frontend. Managed on the builder, so it exists
 /// before `setup` runs and a folder that arrives during launch is kept until the UI is ready.
@@ -18,6 +22,20 @@ pub fn folders_from_urls(urls: &[Url]) -> Vec<String> {
             let s = p.to_string_lossy();
             let trimmed = s.trim_end_matches('/');
             if trimmed.is_empty() { "/".to_string() } else { trimmed.to_string() }
+        })
+        .collect()
+}
+
+/// Each folder as the path of the stored local project it resolves to, if any: macOS hands over the
+/// resolved path (`/private/tmp/x`), while a project may be stored through a symlink (`/tmp/x`).
+pub fn prefer_stored_paths(folders: Vec<String>, stored: &[String]) -> Vec<String> {
+    let resolved: Vec<(PathBuf, &String)> =
+        stored.iter().filter_map(|s| std::fs::canonicalize(s).ok().map(|c| (c, s))).collect();
+    folders
+        .into_iter()
+        .map(|folder| {
+            let Ok(canonical) = std::fs::canonicalize(&folder) else { return folder };
+            resolved.iter().find(|(c, _)| *c == canonical).map_or(folder, |(_, s)| (*s).clone())
         })
         .collect()
 }
@@ -39,8 +57,11 @@ pub fn receive(app: &AppHandle, urls: &[Url]) {
 
 /// The folders received since the last call; the only way they reach the frontend.
 #[tauri::command]
-pub fn take_pending_opens(pending: State<'_, PendingOpens>) -> Vec<String> {
-    std::mem::take(&mut *pending.0.lock().unwrap())
+pub fn take_pending_opens(pending: State<'_, PendingOpens>, state: State<'_, AppState>) -> Vec<String> {
+    let folders = std::mem::take(&mut *pending.0.lock().unwrap());
+    let local: Vec<String> =
+        state.config.get().projects().filter(|p| is_local(&p.host)).map(|p| p.path.clone()).collect();
+    prefer_stored_paths(folders, &local)
 }
 
 #[cfg(test)]
@@ -62,6 +83,25 @@ mod tests {
             Url::parse("https://example.com/x").unwrap(),
         ];
         assert_eq!(folders_from_urls(&urls), vec![folder.to_string_lossy().into_owned()]);
+    }
+
+    #[test]
+    fn a_folder_reached_through_a_symlink_maps_to_the_stored_project_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real");
+        std::fs::create_dir(&real).unwrap();
+        let via = dir.path().join("via");
+        std::os::unix::fs::symlink(&real, &via).unwrap();
+        let other = dir.path().join("other");
+        std::fs::create_dir(&other).unwrap();
+        // macOS hands over the resolved path; the project was stored through the symlink.
+        let received = std::fs::canonicalize(&real).unwrap().to_string_lossy().into_owned();
+        let stored = vec![via.to_string_lossy().into_owned(), "/missing/project".to_string()];
+        let other_s = other.to_string_lossy().into_owned();
+        assert_eq!(
+            prefer_stored_paths(vec![received, other_s.clone()], &stored),
+            vec![via.to_string_lossy().into_owned(), other_s]
+        );
     }
 
     #[test]
