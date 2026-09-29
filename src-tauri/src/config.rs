@@ -112,6 +112,12 @@ pub struct Config {
     /// The sidebar's Bookmarks section is folded. Left out of the JSON when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub bookmarks_collapsed: bool,
+    /// Folders opened from the command line that are in no group, newest first. Left out of the JSON when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub opened: Vec<Project>,
+    /// The sidebar's Opened section is folded. Left out of the JSON when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub opened_collapsed: bool,
 }
 
 impl Default for Config {
@@ -121,16 +127,20 @@ impl Default for Config {
             groups: Vec::new(),
             settings: Settings::default(),
             bookmarks_collapsed: false,
+            opened: Vec::new(),
+            opened_collapsed: false,
         }
     }
 }
 
 impl Config {
-    /// Every project in sidebar order: a group's subgroups come before its own projects.
+    /// Every project in sidebar order: a group's subgroups come before its own projects, and the
+    /// Opened section comes after every group.
     pub fn projects(&self) -> impl Iterator<Item = &Project> {
-        self.groups.iter().flat_map(|g| {
-            g.subgroups.iter().flat_map(|s| s.projects.iter()).chain(g.projects.iter())
-        })
+        self.groups
+            .iter()
+            .flat_map(|g| g.subgroups.iter().flat_map(|s| s.projects.iter()).chain(g.projects.iter()))
+            .chain(self.opened.iter())
     }
 }
 
@@ -306,6 +316,8 @@ mod tests {
             }],
             settings: Settings::default(),
             bookmarks_collapsed: false,
+            opened: Vec::new(),
+            opened_collapsed: false,
         }
     }
 
@@ -611,5 +623,39 @@ mod tests {
         let json = serde_json::to_string(&folded).unwrap();
         assert!(json.contains(r#""bookmarksCollapsed":true"#));
         assert!(serde_json::from_str::<Config>(&json).unwrap().bookmarks_collapsed);
+    }
+    fn opened_tool() -> Project {
+        Project { id: "o1".into(), name: "tool".into(), host: "local".into(), path: "/tool".into(), bookmarked: false }
+    }
+
+    #[test]
+    fn opened_projects_come_after_groups_and_are_validated_with_them() {
+        let mut c = sample();
+        c.opened = vec![opened_tool()];
+        assert_eq!(c.projects().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["p1", "o1"]);
+        let dir = tempfile::tempdir().unwrap();
+        let (store, _) = ConfigStore::load(dir.path().join("config.json"));
+        store.save(c.clone()).unwrap();
+        assert_eq!(store.project("o1").unwrap().path, "/tool");
+
+        let mut dup = c.clone();
+        dup.opened[0].id = "p1".into();
+        assert!(matches!(store.save(dup), Err(AppError::Config(_))));
+        let mut relative = c;
+        relative.opened[0].path = "tool".into();
+        assert!(matches!(store.save(relative), Err(AppError::InvalidPath(_))));
+    }
+
+    #[test]
+    fn opened_fields_default_empty_and_are_written_only_when_set() {
+        let c: Config = serde_json::from_str(r#"{"version":1}"#).unwrap();
+        assert!(c.opened.is_empty());
+        assert!(!c.opened_collapsed);
+        let json = serde_json::to_string(&c).unwrap();
+        assert!(!json.contains("opened"));
+        let set = Config { opened: vec![opened_tool()], opened_collapsed: true, ..c };
+        let json = serde_json::to_string(&set).unwrap();
+        assert!(json.contains(r#""openedCollapsed":true"#));
+        assert_eq!(serde_json::from_str::<Config>(&json).unwrap(), set);
     }
 }
