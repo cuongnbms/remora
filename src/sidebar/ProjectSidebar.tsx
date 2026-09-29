@@ -17,7 +17,8 @@ export function ProjectSidebar() {
   const activeId = useStore((s) => s.activeProjectId);
   const hosts = useStore((s) => s.hosts);
   const editRequest = useStore((s) => s.editRequest);
-  const [adding, setAdding] = useState(false);
+  // The Add project dialog, open with the group it should start on (none: the dialog's default).
+  const [adding, setAdding] = useState<{ groupId?: string } | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [prompt, setPrompt] = useState<PromptState | null>(null);
   const [drag, setDrag] = useState<{ item: DragItem; drop: Drop | null } | null>(null);
@@ -150,6 +151,7 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
+        { label: 'New project…', icon: <PlusIcon />, onSelect: () => setAdding({ groupId: g.id }) },
         { label: 'Rename…', icon: <PencilIcon />, onSelect: () => setPrompt({ title: isGroup ? 'Rename group' : 'Rename subgroup', initial: g.name, onSubmit: (name) => void updateConfig((c) => renameGroup(c, g.id, name)) }) },
         ...(isGroup
           ? [{ label: 'New subgroup…', icon: <FolderPlusIcon />, onSelect: () => setPrompt({ title: `New subgroup in ${g.name}`, initial: '', onSubmit: (name) => void updateConfig((c) => addSubgroup(c, g.id, name)) }) }]
@@ -168,7 +170,7 @@ export function ProjectSidebar() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: 'New project…', icon: <PlusIcon />, onSelect: () => setAdding(true) },
+        { label: 'New project…', icon: <PlusIcon />, onSelect: () => setAdding({}) },
         { label: 'New group…', icon: <FolderPlusIcon />, onSelect: () => setPrompt({ title: 'New group', initial: '', onSubmit: (name) => void updateConfig((c) => addGroup(c, name)) }) },
       ],
     });
@@ -230,7 +232,7 @@ export function ProjectSidebar() {
           <button className="icon-btn" title="Project order" aria-label="Project order" onClick={orderMenu}>
             <SortIcon />
           </button>
-          <button className="icon-btn" title="Add project" aria-label="Add project" onClick={() => setAdding(true)}>
+          <button className="icon-btn" title="Add project" aria-label="Add project" onClick={() => setAdding({})}>
             <PlusIcon />
           </button>
         </span>
@@ -268,7 +270,7 @@ export function ProjectSidebar() {
           <GearIcon />
         </button>
       </div>
-      {adding && <AddProjectDialog onClose={() => setAdding(false)} />}
+      {adding && <AddProjectDialog groupId={adding.groupId} onClose={() => setAdding(null)} />}
       {menu && <ContextMenu {...menu} onClose={closeMenu} />}
       {prompt && <PromptDialog {...prompt} onClose={() => setPrompt(null)} />}
     </aside>

@@ -15,7 +15,7 @@ function trimPath(p: string): string {
   return p.length > 1 ? p.replace(/\/+$/, '') : p;
 }
 
-export function AddProjectDialog({ onClose }: { onClose: () => void }) {
+export function AddProjectDialog({ groupId: initialGroup, onClose }: { groupId?: string; onClose: () => void }) {
   const config = useStore((s) => s.config);
   const lastHost = loadLastHost();
   const [hosts, setHosts] = useState<string[]>([]);
@@ -25,7 +25,7 @@ export function AddProjectDialog({ onClose }: { onClose: () => void }) {
   const [path, setPath] = useState(START_PATH);
   const [name, setName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
-  const [groupId, setGroupId] = useState(config.groups[0]?.id ?? NEW_GROUP);
+  const [groupId, setGroupId] = useState(initialGroup ?? config.groups[0]?.id ?? NEW_GROUP);
   const [newGroup, setNewGroup] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

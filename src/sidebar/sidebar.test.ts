@@ -5,13 +5,14 @@ import type { Config } from '../lib/types';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const { saveConfig, listSshHosts } = vi.hoisted(() => ({
+const { saveConfig, listSshHosts, homeDir } = vi.hoisted(() => ({
   saveConfig: vi.fn(async (_c: unknown) => undefined),
   listSshHosts: vi.fn(async () => []),
+  homeDir: vi.fn(async () => '/Users/me'),
 }));
 
 vi.mock('../lib/api', () => ({
-  api: { saveConfig, listSshHosts },
+  api: { saveConfig, listSshHosts, homeDir },
   errorMessage: (e: unknown) => String(e),
 }));
 
@@ -92,9 +93,20 @@ test('clicking a subgroup toggles only that subgroup', async () => {
 
 test('group menu offers New subgroup, subgroup menu does not', async () => {
   await contextMenu(row('Work'));
-  expect(menuItems()).toEqual(['Rename…', 'New subgroup…', 'Remove (group not empty)']);
+  expect(menuItems()).toEqual(['New project…', 'Rename…', 'New subgroup…', 'Remove (group not empty)']);
   await contextMenu(row('Api'));
-  expect(menuItems()).toEqual(['Rename…', 'Remove (group not empty)']);
+  expect(menuItems()).toEqual(['New project…', 'Rename…', 'Remove (group not empty)']);
+});
+
+test('New project from a group or subgroup menu opens the dialog on that group', async () => {
+  for (const [name, label] of [['Api', 'Work / Api'], ['Home', 'Home']]) {
+    await contextMenu(row(name));
+    await click([...document.querySelectorAll('.context-menu li')].find((li) => li.textContent === 'New project…')!);
+    const selects = document.querySelectorAll<HTMLSelectElement>('.modal select');
+    const select = selects[selects.length - 1];
+    expect(select.selectedOptions[0].textContent).toBe(label);
+    await click([...document.querySelectorAll('.modal button')].find((b) => b.textContent === 'Cancel')!);
+  }
 });
 
 test('project menu can move into other groups and subgroups', async () => {
