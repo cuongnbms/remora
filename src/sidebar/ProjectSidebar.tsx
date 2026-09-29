@@ -203,7 +203,7 @@ export function ProjectSidebar() {
     );
   };
 
-  // Bookmark rows (no container) are shortcuts to a project that lives in a group: they neither drag nor
+  // Bookmark rows (no container) lead with a star and are shortcuts to a project that lives in a group: they neither drag nor
   // take drops, since they carry no data-row, and the drag marks stay on the project's own row.
   const projectRows = (projects: Project[], containerId: string | null, sub: boolean) =>
     projects.map((p) => (
@@ -216,7 +216,7 @@ export function ProjectSidebar() {
         onClick={() => selectProject(p.id)}
         onContextMenu={(e) => projectMenu(e, p)}
       >
-        <span className="project-icon"><FolderIcon open={false} /></span>
+        <span className="project-icon">{containerId ? <FolderIcon open={false} /> : <StarIcon />}</span>
         <span className="project-name">{p.name}</span>
         {hostBadge(p)}
       </div>
@@ -241,7 +241,6 @@ export function ProjectSidebar() {
           <section className="bookmarks">
             <div className={'bookmarks-label' + (config.bookmarksCollapsed ? '' : ' open')} onClick={() => void updateConfig(toggleBookmarks)}>
               <ChevronIcon />
-              <StarIcon />
               Bookmarks
             </div>
             {!config.bookmarksCollapsed && projectRows(marked, null, false)}

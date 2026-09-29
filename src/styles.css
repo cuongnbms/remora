@@ -87,7 +87,6 @@ ul { list-style: none; margin: 0; padding: 0; }
 .group-row:hover { background: var(--bg-hover); }
 .group-row.subgroup { padding-left: 18px; margin-top: 0; font-weight: 400; }
 /* Bookmarks: shortcuts above the groups to projects that also stay in their group. The label folds it like a group. */
-.bookmarks { margin-bottom: 6px; }
 .bookmarks-label { display: flex; align-items: center; gap: 4px; padding: 4px 8px; margin-top: 2px; font-weight: 600; cursor: pointer; user-select: none; border-radius: var(--radius-sm); }
 .bookmarks-label:hover { background: var(--bg-hover); }
 .bookmarks-label .icon { flex: none; color: var(--muted); }
