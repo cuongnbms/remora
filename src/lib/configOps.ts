@@ -1,3 +1,4 @@
+import { isLocal, LOCAL_HOST } from './project';
 import type { Config, Group, Project, Subgroup } from './types';
 
 export function newId(): string {
@@ -8,9 +9,9 @@ export function newId(): string {
   }
 }
 
-// Sidebar order: a group's subgroups come before its own projects.
-export const flatProjects = (c: Config): Project[] =>
-  c.groups.flatMap((g) => [...g.subgroups.flatMap((s) => s.projects), ...g.projects]);
+const groupProjects = (c: Config): Project[] => c.groups.flatMap((g) => [...g.subgroups.flatMap((s) => s.projects), ...g.projects]);
+// Sidebar order: a group's subgroups come before its own projects; the Opened section comes after every group.
+export const flatProjects = (c: Config): Project[] => [...groupProjects(c), ...(c.opened ?? [])];
 export const findProject = (c: Config, id: string): Project | undefined => flatProjects(c).find((p) => p.id === id);
 /** Bookmarked projects, in the order of `c` (pass the sidebar view to match what the sidebar shows). */
 export const bookmarks = (c: Config): Project[] => flatProjects(c).filter((p) => p.bookmarked);
@@ -31,6 +32,12 @@ const mapContainers = (c: Config, fn: (x: Subgroup) => Subgroup): Config => ({
   groups: c.groups.map((g): Group => ({ ...g, ...fn(g), subgroups: g.subgroups.map(fn) })),
 });
 
+// Applies fn to the project list of every group, subgroup and the Opened section (left absent when absent).
+const mapProjectLists = (c: Config, fn: (ps: Project[]) => Project[]): Config => {
+  const mapped = mapContainers(c, (x) => ({ ...x, projects: fn(x.projects) }));
+  return c.opened ? { ...mapped, opened: fn(c.opened) } : mapped;
+};
+
 export type GroupTarget = { groupId: string } | { newGroup: string };
 
 export function addProject(c: Config, target: GroupTarget, p: Project): Config {
@@ -49,11 +56,28 @@ export function addProjects(c: Config, target: GroupTarget, ps: Project[]): Conf
 }
 
 export function updateProject(c: Config, id: string, patch: Partial<Omit<Project, 'id'>>): Config {
-  return mapContainers(c, (x) => ({ ...x, projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+  return mapProjectLists(c, (ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 }
 
 export function removeProject(c: Config, id: string): Config {
-  return mapContainers(c, (x) => ({ ...x, projects: x.projects.filter((p) => p.id !== id) }));
+  return mapProjectLists(c, (ps) => ps.filter((p) => p.id !== id));
+}
+
+/** `path` without trailing slashes; `/` stays `/`. */
+export const normalizeFolderPath = (path: string): string => path.replace(/\/+$/, '') || '/';
+
+/**
+ * The project a folder opened from the command line lands on: a local project in a group with that path (config
+ * unchanged), else the Opened entry with that path moved to the front, else a new Opened entry at the front.
+ */
+export function openLocalFolder(c: Config, path: string): { config: Config; id: string } {
+  const folder = normalizeFolderPath(path);
+  const inGroup = groupProjects(c).find((p) => isLocal(p) && p.path === folder);
+  if (inGroup) return { config: c, id: inGroup.id };
+  const opened = c.opened ?? [];
+  const existing = opened.find((p) => p.path === folder);
+  const project = existing ?? { id: newId(), name: folder.split('/').pop() || '/', host: LOCAL_HOST, path: folder };
+  return { config: { ...c, opened: [project, ...opened.filter((p) => p !== existing)] }, id: project.id };
 }
 
 /** `item` placed before the entry with id `beforeId`, or at the end when that is null or not in the list. */
@@ -126,6 +150,9 @@ export function toggleGroup(c: Config, groupId: string): Config {
 
 /** Collapses or expands the Bookmarks section. */
 export const toggleBookmarks = (c: Config): Config => ({ ...c, bookmarksCollapsed: !c.bookmarksCollapsed });
+
+/** Collapses or expands the Opened section. */
+export const toggleOpened = (c: Config): Config => ({ ...c, openedCollapsed: !c.openedCollapsed });
 
 /** Removes an empty group or subgroup; a group holding subgroups is not empty. */
 export function removeGroup(c: Config, groupId: string): Config {

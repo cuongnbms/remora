@@ -7,8 +7,11 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 /** How the sidebar orders groups, subgroups and projects: as stored (drag to reorder) or by name. */
 export type ProjectOrder = 'manual' | 'name';
 export type Settings = { theme: ThemeMode; uiFont: string | null; codeFont: string | null; fontSize: number; excludes: string[]; projectOrder: ProjectOrder };
-/** `bookmarksCollapsed` folds the sidebar's Bookmarks section; absent means expanded. */
-export type Config = { version: number; groups: Group[]; settings: Settings; bookmarksCollapsed?: boolean };
+/**
+ * `bookmarksCollapsed` folds the sidebar's Bookmarks section; absent means expanded. `opened` holds folders opened
+ * from the command line that are in no group, newest first; `openedCollapsed` folds their section. Both absent means none / expanded.
+ */
+export type Config = { version: number; groups: Group[]; settings: Settings; bookmarksCollapsed?: boolean; opened?: Project[]; openedCollapsed?: boolean };
 export type FontFamily = { family: string; monospace: boolean };
 
 export type EntryKind = 'file' | 'dir' | 'other';

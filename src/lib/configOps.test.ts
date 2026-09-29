@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Config } from './types';
-import { addGroup, addProject, addProjects, addSubgroup, bookmarks, containers, findProject, flatProjects, moveGroup, moveProject, moveSubgroup, removeGroup, removeProject, renameGroup, shortcutProjects, sidebarView, sortByName, toggleGroup, updateProject } from './configOps';
+import { addGroup, addProject, addProjects, addSubgroup, bookmarks, containers, findProject, flatProjects, moveGroup, moveProject, moveSubgroup, normalizeFolderPath, openLocalFolder, removeGroup, removeProject, renameGroup, shortcutProjects, sidebarView, sortByName, toggleGroup, toggleOpened, updateProject } from './configOps';
 import { DEFAULT_SETTINGS } from './settings';
 
 const base: Config = {
@@ -207,4 +207,76 @@ test('removing a bookmark or its project drops it from bookmarks', () => {
 test('shortcutProjects puts bookmarks first and lists each project once', () => {
   expect(ids(shortcutProjects(ordered))).toEqual(ids(flatProjects(ordered)));
   expect(ids(shortcutProjects(marked(ordered, 'p3', 'p5')))).toEqual(['p5', 'p3', 'p6', 'p1', 'p2', 'p4']);
+});
+
+const withOpened: Config = {
+  ...base,
+  opened: [
+    { id: 'o1', name: 'x', host: 'local', path: '/x' },
+    { id: 'o2', name: 'y', host: 'local', path: '/y' },
+  ],
+};
+
+test('flat lists put opened projects after every group', () => {
+  expect(flatProjects(withOpened).map((p) => p.id)).toEqual(['p1', 'o1', 'o2']);
+  expect(findProject(withOpened, 'o1')?.path).toBe('/x');
+  const marked = updateProject(withOpened, 'o2', { bookmarked: true });
+  expect(bookmarks(marked).map((p) => p.id)).toEqual(['o2']);
+  expect(shortcutProjects(marked).map((p) => p.id)).toEqual(['o2', 'p1', 'o1']);
+});
+
+test('normalizeFolderPath strips trailing slashes but keeps the root', () => {
+  expect(normalizeFolderPath('/a/b/')).toBe('/a/b');
+  expect(normalizeFolderPath('/a/b//')).toBe('/a/b');
+  expect(normalizeFolderPath('/a/b')).toBe('/a/b');
+  expect(normalizeFolderPath('/')).toBe('/');
+});
+
+test('openLocalFolder picks a local project already in a group and changes nothing', () => {
+  const c = updateProject(base, 'p1', { host: 'local' });
+  const r = openLocalFolder(c, '/a/');
+  expect(r.id).toBe('p1');
+  expect(r.config).toBe(c);
+});
+
+test('openLocalFolder does not match a remote project with the same path', () => {
+  const r = openLocalFolder(base, '/a');
+  expect(r.id).not.toBe('p1');
+  expect(r.config.opened).toEqual([{ id: r.id, name: 'a', host: 'local', path: '/a' }]);
+});
+
+test('openLocalFolder moves a folder already in Opened to the front', () => {
+  const r = openLocalFolder(withOpened, '/y/');
+  expect(r.id).toBe('o2');
+  expect(r.config.opened!.map((p) => p.id)).toEqual(['o2', 'o1']);
+});
+
+test('openLocalFolder prepends a new folder named after its last segment', () => {
+  const r = openLocalFolder(withOpened, '/Users/me/Kế hoạch dự án/');
+  expect(r.config.opened![0]).toEqual({ id: r.id, name: 'Kế hoạch dự án', host: 'local', path: '/Users/me/Kế hoạch dự án' });
+  expect(r.config.opened).toHaveLength(3);
+  expect(r.config.groups).toBe(withOpened.groups);
+  expect(openLocalFolder(base, '/').config.opened![0]).toMatchObject({ name: '/', path: '/' });
+});
+
+test('update, remove and move reach opened projects, and a move keeps the bookmark', () => {
+  expect(updateProject(withOpened, 'o1', { name: 'renamed' }).opened![0].name).toBe('renamed');
+  expect(removeProject(withOpened, 'o1').opened!.map((p) => p.id)).toEqual(['o2']);
+  const moved = moveProject(updateProject(withOpened, 'o1', { bookmarked: true }), 'o1', 'g2');
+  expect(moved.opened!.map((p) => p.id)).toEqual(['o2']);
+  expect(moved.groups[1].projects).toEqual([{ id: 'o1', name: 'x', host: 'local', path: '/x', bookmarked: true }]);
+});
+
+test('ops on a config without opened do not add the key', () => {
+  expect(updateProject(base, 'p1', { name: 'z' })).not.toHaveProperty('opened');
+  expect(removeProject(base, 'p1')).not.toHaveProperty('opened');
+  expect(moveProject(base, 'p1', 'g2')).not.toHaveProperty('opened');
+  expect(sortByName(base)).not.toHaveProperty('opened');
+});
+
+test('sorting by name leaves Opened newest first, and toggleOpened flips its fold', () => {
+  const c = { ...withOpened, opened: [...withOpened.opened!].reverse() };
+  expect(sortByName(c).opened!.map((p) => p.id)).toEqual(['o2', 'o1']);
+  expect(toggleOpened(withOpened).openedCollapsed).toBe(true);
+  expect(toggleOpened(toggleOpened(withOpened)).openedCollapsed).toBe(false);
 });
